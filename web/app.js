@@ -204,7 +204,7 @@ function normalizeText(value) {
     .replace(/\s/g, "");
 }
 
-function getYouTubeEmbedUrl(value) {
+function getYouTubePreview(value) {
   try {
     const url = new URL(value);
     const host = url.hostname.replace(/^www\./, "");
@@ -225,7 +225,11 @@ function getYouTubeEmbedUrl(value) {
     }
 
     if (!/^[a-zA-Z0-9_-]{6,}$/.test(videoId)) return null;
-    return `https://www.youtube.com/embed/${videoId}`;
+    return {
+      videoId,
+      watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+    };
   } catch {
     return null;
   }
@@ -679,7 +683,7 @@ function showVideoPreview(file) {
 
 function loadVideoFromUrl() {
   const url = $("#videoUrl").value.trim();
-  const youtubeEmbedUrl = getYouTubeEmbedUrl(url);
+  const youtubePreview = getYouTubePreview(url);
 
   if (!url) {
     alert("영상 URL을 붙여넣으세요.");
@@ -706,18 +710,20 @@ function loadVideoFromUrl() {
   };
   selectedVideoUrl = url;
   selectedVideoMeta = null;
-  selectedVideoMode = youtubeEmbedUrl ? "youtube" : "url";
+  selectedVideoMode = youtubePreview ? "youtube" : "url";
   $("#videoFile").value = "";
 
-  if (youtubeEmbedUrl) {
+  if (youtubePreview) {
     $("#videoPreview").innerHTML = `
-      <iframe
-        title="YouTube video preview"
-        src="${escapeHtml(youtubeEmbedUrl)}"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen
-      ></iframe>
-      <p class="hint">YouTube/Shorts 링크는 원본 영상을 가져오지 않고 임베드 미리보기로 표시합니다. 정식 AI 분석에는 직접 촬영한 파일 또는 MP4/WebM 원본 URL이 필요합니다.</p>
+      <div class="youtube-preview">
+        <img src="${escapeHtml(youtubePreview.thumbnailUrl)}" alt="YouTube video thumbnail" />
+        <div>
+          <strong>YouTube 영상 링크가 등록되었습니다.</strong>
+          <p>YouTube 임베드는 영상 설정에 따라 오류 153이 발생할 수 있어 썸네일과 외부 열기로 표시합니다.</p>
+          <a class="secondary-action" href="${escapeHtml(youtubePreview.watchUrl)}" target="_blank" rel="noopener noreferrer">YouTube에서 열기</a>
+        </div>
+      </div>
+      <p class="hint">이 링크는 POC 입력값으로 저장됩니다. 정식 AI 분석에는 직접 촬영한 파일 또는 MP4/WebM 원본 URL이 필요합니다.</p>
     `;
     return;
   }

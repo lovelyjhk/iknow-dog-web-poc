@@ -14,7 +14,7 @@ Start-Process "C:\Users\lovel\pet\web\index.html"
 
 - 반려견 프로필 저장
 - 매일 건강 체크 기록
-- 보행/증상 영상 선택, MP4/WebM URL 및 YouTube/Shorts URL 미리보기
+- 보행/증상 영상 선택, MP4/WebM URL 재생, YouTube/Shorts 썸네일 미리보기
 - 증상 체크와 보호자 메모 입력
 - 이상 신호 분석 결과 생성
 - 위험도, 관찰 신호, 권장 행동 표시

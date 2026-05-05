@@ -1,4 +1,4 @@
-const CACHE_NAME = "iknow-dog-web-poc-v3";
+const CACHE_NAME = "iknow-dog-web-poc-v4";
 const ASSETS = [
   "./",
   "./index.html",

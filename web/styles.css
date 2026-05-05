@@ -531,12 +531,31 @@ textarea:focus {
   background: #000;
 }
 
-.video-preview iframe {
-  display: block;
+.youtube-preview {
+  display: grid;
   width: 100%;
-  min-height: 360px;
-  border: 0;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  text-align: left;
+}
+
+.youtube-preview img {
+  width: 100%;
+  border-radius: 8px;
   background: #000;
+}
+
+.youtube-preview p {
+  color: #e9dccb;
+}
+
+.youtube-preview a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
 }
 
 .analysis-output {
@@ -859,6 +878,10 @@ textarea:focus {
 
   .symptom-grid,
   .data-table div {
+    grid-template-columns: 1fr;
+  }
+
+  .youtube-preview {
     grid-template-columns: 1fr;
   }
 
