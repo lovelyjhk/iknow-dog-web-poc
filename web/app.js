@@ -836,7 +836,7 @@ function renderVetReport() {
     : ["- 기록 없음"];
 
   const lines = [
-    "말하지 않아도 알아요 - 병원 상담 전 리포트",
+    "나아파 - 병원 상담 전 리포트",
     "",
     "[반려견 정보]",
     `이름: ${dog.name || "-"}`,
@@ -1702,7 +1702,7 @@ function useCurrentLocation() {
 function exportLocalData() {
   const payload = {
     exportedAt: new Date().toISOString(),
-    app: "말하지 않아도 알아요",
+    app: "나아파",
     version: "0.1.0",
     state,
   };

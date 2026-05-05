@@ -1,6 +1,6 @@
 {
-  "name": "말하지 않아도 알아요",
-  "short_name": "말하지않아도",
+  "name": "나아파",
+  "short_name": "나아파",
   "description": "반려견 건강기록, 보행/증상 영상, 음식 안전, 병원 상담 리포트를 연결하는 모바일 POC 웹앱",
   "start_url": "./index.html",
   "scope": "./",
