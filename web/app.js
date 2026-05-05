@@ -1,5 +1,5 @@
-const STORAGE_KEY = "iknow-web-poc-state-v3";
-const LEGACY_KEYS = ["iknow-web-poc-state-v2", "iknow-web-poc-state"];
+const STORAGE_KEY = "iknow-web-poc-state-v4";
+const LEGACY_KEYS = ["iknow-web-poc-state-v3", "iknow-web-poc-state-v2", "iknow-web-poc-state"];
 const POC_APP_URL = "https://lovelyjhk.github.io/iknow-dog-web-poc/";
 const SAMPLE_VIDEO_URL = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
 const SAMPLE_NUTRITION_LABEL_URL = "./sample-nutrition-label.svg";
@@ -196,7 +196,24 @@ const defaultState = {
   timeCoupon: null,
   aiEndpoint: "",
   redeemedCoupons: [],
+  authUsers: [],
+  currentUser: null,
 };
+
+function createDefaultState() {
+  return {
+    ...defaultState,
+    dog: null,
+    healthLogs: [],
+    analyses: [],
+    communityPosts: [],
+    emailVerification: null,
+    timeCoupon: null,
+    redeemedCoupons: [],
+    authUsers: [],
+    currentUser: null,
+  };
+}
 
 let state = loadState();
 let selectedVideo = null;
@@ -213,6 +230,54 @@ const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 function makeId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getUserDisplayName(user = state.currentUser) {
+  if (!user) return "로그인 전";
+  return user.displayName || user.email?.split("@")[0] || "보호자";
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function stringToBase64(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
+}
+
+async function hashPassword(password, salt) {
+  const value = `${salt}:${password}`;
+  if (window.crypto?.subtle) {
+    const data = new TextEncoder().encode(value);
+    const digest = await window.crypto.subtle.digest("SHA-256", data);
+    return bytesToHex(new Uint8Array(digest));
+  }
+  return `fallback-${stringToBase64(value)}`;
+}
+
+function toSessionUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    provider: user.provider,
+    signedInAt: new Date().toISOString(),
+  };
+}
+
+function isAuthenticated() {
+  return Boolean(state.currentUser?.id);
 }
 
 function escapeHtml(value) {
@@ -267,7 +332,7 @@ function loadState() {
     const current = localStorage.getItem(STORAGE_KEY);
     const legacy = LEGACY_KEYS.map((key) => localStorage.getItem(key)).find(Boolean);
     const parsed = current ? JSON.parse(current) : legacy ? JSON.parse(legacy) : {};
-    const next = { ...defaultState, ...parsed };
+    const next = { ...createDefaultState(), ...parsed };
 
     next.plan = plans[next.plan] ? next.plan : "free";
     next.creditsRemaining = Number.isFinite(Number(next.creditsRemaining))
@@ -280,10 +345,24 @@ function loadState() {
     next.timeCoupon = next.timeCoupon || null;
     next.aiEndpoint = typeof next.aiEndpoint === "string" ? next.aiEndpoint : "";
     next.redeemedCoupons = Array.isArray(next.redeemedCoupons) ? next.redeemedCoupons : [];
+    next.authUsers = Array.isArray(next.authUsers)
+      ? next.authUsers
+          .map((user) => ({
+            ...user,
+            email: normalizeEmail(user.email),
+          }))
+          .filter((user) => user.id && user.email)
+      : [];
+    next.currentUser = next.currentUser?.id && next.currentUser?.email
+      ? {
+          ...next.currentUser,
+          email: normalizeEmail(next.currentUser.email),
+        }
+      : null;
 
     return next;
   } catch {
-    return { ...defaultState };
+    return createDefaultState();
   }
 }
 
@@ -309,7 +388,169 @@ function switchView(viewId) {
   $("#pageTitle").textContent = activeButton ? activeButton.textContent.trim() : "홈";
 
   if (viewId === "report") renderVetReport();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  const main = $(".main");
+  if (main) {
+    main.scrollTo({ top: 0, behavior: "smooth" });
+  } else {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
+function setAuthMessage(message, type = "info") {
+  const element = $("#authMessage");
+  if (!element) return;
+
+  const className = type === "error" ? ' class="error-text"' : "";
+  element.innerHTML = `<p${className}>${escapeHtml(message)}</p>`;
+}
+
+function requireAuth(message = "이 기능을 사용하려면 먼저 로그인하거나 계정을 만드세요.") {
+  if (isAuthenticated()) return true;
+  setAuthMessage(message, "error");
+  switchView("auth");
+  return false;
+}
+
+function renderAuthState() {
+  const user = state.currentUser;
+  const loggedIn = Boolean(user);
+  const name = getUserDisplayName(user);
+  const email = user?.email || "-";
+
+  const navAuthLabel = $("#navAuthLabel");
+  if (navAuthLabel) navAuthLabel.textContent = loggedIn ? "계정" : "로그인";
+
+  const authStateBadge = $("#authStateBadge");
+  if (authStateBadge) authStateBadge.textContent = loggedIn ? "로그인됨" : "로그아웃";
+
+  const accountName = $("#accountName");
+  if (accountName) accountName.textContent = name;
+
+  const accountEmail = $("#accountEmail");
+  if (accountEmail) {
+    accountEmail.textContent = loggedIn
+      ? `${email} · ${user.provider === "password" ? "이메일 계정" : `${user.provider} 데모 로그인`}`
+      : "계정이 없으면 로컬 POC 세션으로 시작할 수 있습니다.";
+  }
+
+  const logoutButton = $("#logoutButton");
+  if (logoutButton) logoutButton.disabled = !loggedIn;
+
+  const settingsName = $("#settingsAccountName");
+  if (settingsName) settingsName.textContent = name;
+
+  const settingsEmail = $("#settingsAccountEmail");
+  if (settingsEmail) settingsEmail.textContent = email;
+
+  const settingsAccess = $("#settingsAccountAccess");
+  if (settingsAccess) {
+    settingsAccess.textContent = loggedIn
+      ? "프로필, 건강기록, 영상/성분표 AI 분석, 쿠폰 사용 가능"
+      : "로그인 후 분석/기록 사용 가능";
+  }
+
+  const emailInput = $("#emailInput");
+  if (loggedIn && emailInput && !emailInput.value) {
+    emailInput.value = user.email;
+  }
+}
+
+async function handleSignup(event) {
+  event.preventDefault();
+  const displayName = $("#signupName").value.trim();
+  const email = normalizeEmail($("#signupEmail").value);
+  const password = $("#signupPassword").value;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    setAuthMessage("회원가입 이메일 주소를 확인하세요.", "error");
+    return;
+  }
+
+  if (password.length < 6) {
+    setAuthMessage("비밀번호는 6자 이상으로 입력하세요.", "error");
+    return;
+  }
+
+  if (state.authUsers.some((user) => user.email === email)) {
+    setAuthMessage("이미 가입된 이메일입니다. 로그인 탭에서 계속하세요.", "error");
+    return;
+  }
+
+  const salt = makeId();
+  const user = {
+    id: makeId(),
+    email,
+    displayName: displayName || email.split("@")[0],
+    provider: "password",
+    passwordHash: await hashPassword(password, salt),
+    salt,
+    createdAt: new Date().toISOString(),
+  };
+
+  state.authUsers = [user, ...state.authUsers];
+  state.currentUser = toSessionUser(user);
+  $("#signupPassword").value = "";
+  $("#loginEmail").value = email;
+  saveState();
+  setAuthMessage("회원가입이 완료되었습니다. 이제 반려견 프로필을 등록하세요.");
+  switchView("profile");
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  const email = normalizeEmail($("#loginEmail").value);
+  const password = $("#loginPassword").value;
+  const user = state.authUsers.find((item) => item.email === email);
+
+  if (!user || user.provider !== "password") {
+    setAuthMessage("가입된 이메일 계정을 찾을 수 없습니다.", "error");
+    return;
+  }
+
+  const passwordHash = await hashPassword(password, user.salt);
+  if (passwordHash !== user.passwordHash) {
+    setAuthMessage("비밀번호가 일치하지 않습니다.", "error");
+    return;
+  }
+
+  state.currentUser = toSessionUser(user);
+  $("#loginPassword").value = "";
+  saveState();
+  setAuthMessage("로그인되었습니다. 영상 분석과 쿠폰 사용을 진행할 수 있습니다.");
+  switchView("dashboard");
+}
+
+function loginWithProvider(provider) {
+  const providerName = {
+    google: "Google",
+    kakao: "Kakao",
+    naver: "Naver",
+  }[provider] || provider;
+  const email = `${provider}@demo.iknow.local`;
+  let user = state.authUsers.find((item) => item.provider === provider && item.email === email);
+
+  if (!user) {
+    user = {
+      id: makeId(),
+      email,
+      displayName: `${providerName} 보호자`,
+      provider,
+      createdAt: new Date().toISOString(),
+    };
+    state.authUsers = [user, ...state.authUsers];
+  }
+
+  state.currentUser = toSessionUser(user);
+  saveState();
+  setAuthMessage(`${providerName} 데모 계정으로 로그인되었습니다. 정식 출시에서는 OAuth 콜백으로 교체합니다.`);
+  switchView("dashboard");
+}
+
+function logout() {
+  state.currentUser = null;
+  saveState();
+  setAuthMessage("로그아웃되었습니다. 분석과 기록 저장은 다시 로그인한 뒤 사용할 수 있습니다.");
+  switchView("auth");
 }
 
 function renderState() {
@@ -320,6 +561,7 @@ function renderState() {
   $("#currentPlanName").textContent = plan.name;
   $("#creditCount").textContent = `${state.creditsRemaining} credits`;
   $("#creditMeter").style.width = `${creditPercent}%`;
+  renderAuthState();
 
   if (state.dog) {
     $("#dogName").value = state.dog.name || "";
@@ -451,7 +693,9 @@ function renderCommunity() {
 }
 
 function isTimeCouponValid() {
+  if (!isAuthenticated()) return false;
   if (!state.timeCoupon) return false;
+  if (state.timeCoupon.userId && state.timeCoupon.userId !== state.currentUser.id) return false;
   return state.timeCoupon.usesRemaining > 0 && new Date(state.timeCoupon.expiresAt).getTime() > Date.now();
 }
 
@@ -473,6 +717,16 @@ function renderTimeCoupon() {
   if (sendButton) sendButton.disabled = false;
   if (verifyButton) verifyButton.disabled = false;
 
+  if (!isAuthenticated()) {
+    status.textContent = "로그인 후 메일 주소를 인증하면 48시간 동안 영상/성분표 AI 분석 5회를 사용할 수 있습니다.";
+    return;
+  }
+
+  if (state.timeCoupon?.userId && state.timeCoupon.userId !== state.currentUser.id) {
+    status.textContent = "현재 로그인 계정에는 활성화된 메일 인증 쿠폰이 없습니다.";
+    return;
+  }
+
   if (state.timeCoupon?.usesRemaining === 0) {
     status.textContent = "메일 인증 쿠폰 5회를 모두 사용했습니다. 기본 크레딧으로 계속 이용할 수 있습니다.";
     return;
@@ -482,6 +736,7 @@ function renderTimeCoupon() {
 }
 
 function getAnalysisAccessText() {
+  if (!isAuthenticated()) return "로그인 후 AI 분석 쿠폰과 크레딧을 사용할 수 있습니다.";
   if (isTimeCouponValid()) return `메일 인증 쿠폰 사용 가능: ${state.timeCoupon.usesRemaining}회 남음.`;
   if (state.creditsRemaining >= 10) return `크레딧 사용 가능: ${state.creditsRemaining} credits 보유.`;
   return "사용 가능한 AI 분석 쿠폰 또는 크레딧이 없습니다.";
@@ -668,6 +923,7 @@ function createSampleDatasetReport() {
   const dogName = state.dog?.name || "반려견";
   return {
     id: makeId(),
+    userId: state.currentUser?.id || null,
     createdAt: new Date().toISOString(),
     riskLevel: "WATCH",
     summary: `${dogName} 분석에 활용할 기준 데이터는 ${sample.frames.toLocaleString(
@@ -745,6 +1001,7 @@ function createHealthLog() {
 
   return {
     id: makeId(),
+    userId: state.currentUser?.id || null,
     createdAt: new Date().toISOString(),
     riskLevel,
     appetite,
@@ -836,6 +1093,7 @@ function createAnalysis({ symptoms, ownerNote, videoType }) {
 
   return {
     id: makeId(),
+    userId: state.currentUser?.id || null,
     createdAt: new Date().toISOString(),
     riskLevel,
     summary: summaryByRisk[riskLevel],
@@ -873,6 +1131,7 @@ function normalizeAiAnalysis(raw, context) {
 
   return {
     id: makeId(),
+    userId: state.currentUser?.id || null,
     createdAt: new Date().toISOString(),
     riskLevel,
     summary: String(raw.summary || `${dogName}의 영상에서 ${riskLabels[riskLevel]} 수준의 신호가 관찰되었습니다.`),
@@ -1113,6 +1372,10 @@ async function testAiEndpoint() {
 }
 
 async function runRealVideoAnalysis() {
+  if (!requireAuth("영상 AI 분석을 실행하려면 먼저 로그인하거나 계정을 만드세요.")) {
+    return;
+  }
+
   if (!state.dog) {
     alert("먼저 반려견 프로필을 저장하세요.");
     switchView("profile");
@@ -1354,6 +1617,10 @@ function renderNutritionResult(result) {
 }
 
 async function runNutritionAnalysis() {
+  if (!requireAuth("성분표 AI 분석을 실행하려면 먼저 로그인하거나 계정을 만드세요.")) {
+    return;
+  }
+
   if (!selectedNutritionImageDataUrl) {
     $("#nutritionOutput").innerHTML = '<p class="error-text">먼저 사료 또는 간식 성분표 사진을 선택하세요.</p>';
     return;
@@ -1456,7 +1723,7 @@ function resetLocalData() {
 
   localStorage.removeItem(STORAGE_KEY);
   LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
-  state = { ...defaultState };
+  state = createDefaultState();
   selectedVideo = null;
   selectedVideoMeta = null;
   selectedVideoUrl = null;
@@ -1520,9 +1787,21 @@ function bindEvents() {
     button.addEventListener("click", () => switchView(button.dataset.jump));
   });
 
+  $("#signupForm").addEventListener("submit", handleSignup);
+  $("#loginForm").addEventListener("submit", handleLogin);
+  $$("[data-oauth-provider]").forEach((button) => {
+    button.addEventListener("click", () => loginWithProvider(button.dataset.oauthProvider));
+  });
+  $("#logoutButton").addEventListener("click", logout);
+
   $("#dogForm").addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!requireAuth("반려견 프로필을 저장하려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
+
     state.dog = {
+      userId: state.currentUser.id,
       name: $("#dogName").value.trim(),
       breed: $("#breed").value.trim(),
       age: $("#age").value,
@@ -1537,6 +1816,10 @@ function bindEvents() {
 
   $("#healthForm").addEventListener("submit", (event) => {
     event.preventDefault();
+
+    if (!requireAuth("건강기록을 저장하려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
 
     if (!state.dog) {
       alert("먼저 반려견 프로필을 저장하세요.");
@@ -1592,6 +1875,10 @@ function bindEvents() {
   });
 
   $("#runSampleAnalysis").addEventListener("click", () => {
+    if (!requireAuth("샘플 리포트를 분석 이력에 저장하려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
+
     const result = createSampleDatasetReport();
     state.analyses = [result, ...state.analyses].slice(0, 20);
     saveState();
@@ -1681,12 +1968,17 @@ function bindEvents() {
 
   $("#communityForm").addEventListener("submit", (event) => {
     event.preventDefault();
+    if (!requireAuth("커뮤니티 글을 저장하려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
+
     const body = $("#postBody").value.trim();
     if (!body) return;
 
     state.communityPosts = [
       {
         id: makeId(),
+        userId: state.currentUser.id,
         createdAt: new Date().toISOString(),
         topic: $("#postTopic").value,
         body,
@@ -1711,6 +2003,10 @@ function bindEvents() {
   });
 
   $("#redeemCoupon").addEventListener("click", () => {
+    if (!requireAuth("쿠폰을 등록하려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
+
     const code = $("#couponCode").value.trim().toUpperCase();
 
     if (code !== "WELCOME3000") {
@@ -1731,6 +2027,10 @@ function bindEvents() {
   });
 
   $("#sendEmailCode").addEventListener("click", () => {
+    if (!requireAuth("메일 인증 쿠폰을 받으려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
+
     const email = $("#emailInput").value.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       $("#timeCouponStatus").textContent = "올바른 이메일 주소를 입력하세요.";
@@ -1739,6 +2039,7 @@ function bindEvents() {
 
     const code = generateCode();
     state.emailVerification = {
+      userId: state.currentUser.id,
       email,
       code,
       expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
@@ -1755,10 +2056,19 @@ function bindEvents() {
   });
 
   $("#verifyEmailCode").addEventListener("click", () => {
+    if (!requireAuth("메일 인증 쿠폰을 활성화하려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
+
     const verification = state.emailVerification;
     const code = $("#emailCodeInput").value.trim();
     if (!verification || new Date(verification.expiresAt).getTime() < Date.now()) {
       $("#timeCouponStatus").textContent = "인증코드가 없거나 만료되었습니다. 다시 발급하세요.";
+      return;
+    }
+
+    if (verification.userId && verification.userId !== state.currentUser.id) {
+      $("#timeCouponStatus").textContent = "현재 로그인 계정과 인증코드를 받은 계정이 다릅니다.";
       return;
     }
 
@@ -1768,6 +2078,7 @@ function bindEvents() {
     }
 
     state.timeCoupon = {
+      userId: state.currentUser.id,
       email: verification.email,
       usesRemaining: 5,
       issuedAt: new Date().toISOString(),
@@ -1811,6 +2122,10 @@ function bindEvents() {
     if (!target) return;
 
     const planKey = target.dataset.plan;
+    if (!requireAuth("요금제를 변경하려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
+
     state.plan = planKey;
     state.creditsRemaining = plans[planKey].credits;
     saveState();

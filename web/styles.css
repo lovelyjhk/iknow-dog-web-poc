@@ -415,6 +415,32 @@ textarea:focus-visible {
   gap: 18px;
 }
 
+.stack-form {
+  display: grid;
+  gap: 14px;
+}
+
+.auth-provider-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.auth-session-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: #fff;
+}
+
+.auth-session-panel h4 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
 .save-state,
 .risk-badge {
   display: inline-flex;
@@ -867,7 +893,8 @@ textarea:focus {
 
 @media (max-width: 860px) {
   body {
-    padding-bottom: calc(76px + var(--safe-bottom));
+    overflow: hidden;
+    padding-bottom: 0;
   }
 
   .app-shell {
@@ -887,7 +914,9 @@ textarea:focus {
   }
 
   .main {
-    padding: 16px;
+    height: calc(100dvh - 76px - var(--safe-bottom));
+    overflow-y: auto;
+    padding: 16px 16px 24px;
   }
 
   .topbar {
@@ -979,7 +1008,8 @@ textarea:focus {
 
   .symptom-grid,
   .data-table div,
-  .metric-grid {
+  .metric-grid,
+  .auth-provider-row {
     grid-template-columns: 1fr;
   }
 

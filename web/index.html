@@ -33,6 +33,10 @@
             <span class="nav-icon">01</span>
             <span>홈</span>
           </button>
+          <button class="nav-item" data-view="auth">
+            <span class="nav-icon">ID</span>
+            <span id="navAuthLabel">로그인</span>
+          </button>
           <button class="nav-item" data-view="profile">
             <span class="nav-icon">02</span>
             <span>프로필</span>
@@ -118,6 +122,7 @@
                 하나의 모바일 POC에서 확인합니다.
               </p>
               <div class="hero-actions">
+                <button class="primary-action" data-jump="auth">로그인/회원가입</button>
                 <button class="primary-action" data-jump="analysis">영상 분석</button>
                 <button class="secondary-action" data-jump="health">오늘 기록</button>
                 <button class="secondary-action" data-jump="report">상담 리포트</button>
@@ -135,6 +140,10 @@
           </div>
 
           <div class="grid four">
+            <button class="quick-card" data-jump="auth">
+              <strong>계정</strong>
+              <span>메일 가입, 로그인, 쿠폰 권한</span>
+            </button>
             <button class="quick-card" data-jump="profile">
               <strong>프로필</strong>
               <span>품종, 나이, 체중, 질환</span>
@@ -170,6 +179,7 @@
                 </div>
               </div>
               <ol class="flow-list">
+                <li>회원가입 또는 로그인</li>
                 <li>반려견 프로필 등록</li>
                 <li>오늘 건강 체크 또는 증상 영상 업로드</li>
                 <li>위험도와 이상 신호 확인</li>
@@ -183,6 +193,89 @@
               <p>
                 본 서비스는 질병명을 확정하지 않습니다. 영상과 기록에서 확인되는 이상 신호를
                 안내하고, 필요한 경우 수의사 상담을 권장하는 보조 도구입니다.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="auth">
+          <div class="grid two auth-grid">
+            <article class="card form">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Account</p>
+                  <h3>로그인</h3>
+                </div>
+                <span class="save-state" id="authStateBadge">로그아웃</span>
+              </div>
+              <form class="stack-form" id="loginForm">
+                <label>
+                  이메일
+                  <input id="loginEmail" type="email" placeholder="tester@example.com" autocomplete="email" />
+                </label>
+                <label>
+                  비밀번호
+                  <input id="loginPassword" type="password" placeholder="6자 이상" autocomplete="current-password" />
+                </label>
+                <button class="primary-action full" type="submit">로그인</button>
+              </form>
+              <div class="auth-provider-row">
+                <button class="secondary-action" data-oauth-provider="google" type="button">Google</button>
+                <button class="secondary-action" data-oauth-provider="kakao" type="button">Kakao</button>
+                <button class="secondary-action" data-oauth-provider="naver" type="button">Naver</button>
+              </div>
+              <p class="hint">소셜 버튼은 POC 데모 세션입니다. 정식 배포에서는 Supabase OAuth로 교체합니다.</p>
+              <div class="analysis-output" id="authMessage">
+                <p>분석, 기록, 쿠폰 사용을 위해 먼저 로그인하거나 계정을 만드세요.</p>
+              </div>
+            </article>
+
+            <article class="card form">
+              <p class="eyebrow">Sign up</p>
+              <h3>회원가입</h3>
+              <form class="stack-form" id="signupForm">
+                <label>
+                  이름
+                  <input id="signupName" placeholder="보호자 이름" autocomplete="name" />
+                </label>
+                <label>
+                  이메일
+                  <input id="signupEmail" type="email" placeholder="tester@example.com" autocomplete="email" />
+                </label>
+                <label>
+                  비밀번호
+                  <input id="signupPassword" type="password" minlength="6" placeholder="6자 이상" autocomplete="new-password" />
+                </label>
+                <button class="primary-action full" type="submit">계정 만들기</button>
+              </form>
+              <article class="auth-session-panel">
+                <p class="eyebrow">Current session</p>
+                <h4 id="accountName">로그인 전</h4>
+                <p id="accountEmail">계정이 없으면 로컬 POC 세션으로 시작할 수 있습니다.</p>
+                <div class="action-list">
+                  <button class="secondary-action" data-jump="settings" type="button">쿠폰/AI 설정</button>
+                  <button class="secondary-action danger-action" id="logoutButton" type="button">로그아웃</button>
+                </div>
+              </article>
+            </article>
+          </div>
+
+          <div class="grid two">
+            <article class="card">
+              <p class="eyebrow">Protected flow</p>
+              <h3>로그인 후 가능한 작업</h3>
+              <div class="data-table">
+                <div><strong>프로필</strong><span>반려견 정보 저장과 상담 리포트 생성</span></div>
+                <div><strong>AI 분석</strong><span>영상/성분표 분석, 메일 인증 5회 쿠폰 사용</span></div>
+                <div><strong>기록</strong><span>건강기록, 분석 이력, 커뮤니티 게시글 저장</span></div>
+              </div>
+            </article>
+            <article class="card warning">
+              <p class="eyebrow">Production identity</p>
+              <h3>정식 출시 전환 기준</h3>
+              <p>
+                현재 계정은 브라우저 로컬 POC 세션입니다. 출시형에서는 Supabase Auth, 이메일 인증,
+                OAuth, 서버 RLS 정책으로 사용자별 데이터 저장을 분리합니다.
               </p>
             </article>
           </div>
@@ -635,6 +728,31 @@
         <section class="view" id="settings">
           <div class="grid two">
             <article class="card">
+              <p class="eyebrow">Account status</p>
+              <h3>계정 상태</h3>
+              <div class="data-table">
+                <div><strong>사용자</strong><span id="settingsAccountName">로그인 전</span></div>
+                <div><strong>이메일</strong><span id="settingsAccountEmail">-</span></div>
+                <div><strong>권한</strong><span id="settingsAccountAccess">로그인 후 분석/기록 사용 가능</span></div>
+              </div>
+              <div class="action-list">
+                <button class="primary-action" data-jump="auth" type="button">계정 관리</button>
+                <button class="secondary-action" data-jump="profile" type="button">프로필 이동</button>
+              </div>
+            </article>
+            <article class="card">
+              <p class="eyebrow">Auth standard</p>
+              <h3>표준 플랫폼 전환</h3>
+              <div class="data-table">
+                <div><strong>인증</strong><span>Supabase email/password, Google, Kakao, Naver OAuth</span></div>
+                <div><strong>권한</strong><span>JWT + Row Level Security로 사용자별 데이터 격리</span></div>
+                <div><strong>메일</strong><span>Worker 메일 API로 인증코드와 쿠폰 발급 로그 저장</span></div>
+              </div>
+            </article>
+          </div>
+
+          <div class="grid two">
+            <article class="card">
               <p class="eyebrow">Subscription</p>
               <h3>요금제</h3>
               <div class="plans" id="plans"></div>
@@ -745,7 +863,7 @@
         <button class="bottom-item" data-view="health">기록</button>
         <button class="bottom-item primary-tab" data-view="analysis">분석</button>
         <button class="bottom-item" data-view="care">케어</button>
-        <button class="bottom-item" data-view="settings">내정보</button>
+        <button class="bottom-item" data-view="auth" id="bottomAuthLabel">계정</button>
       </nav>
     </div>
 
