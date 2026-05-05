@@ -458,13 +458,20 @@ function isTimeCouponValid() {
 function renderTimeCoupon() {
   const status = $("#timeCouponStatus");
   if (!status) return;
+  const sendButton = $("#sendEmailCode");
+  const verifyButton = $("#verifyEmailCode");
 
   if (isTimeCouponValid()) {
     status.textContent = `메일 인증 쿠폰 활성화: ${state.timeCoupon.usesRemaining}회 남음 · ${formatDate(
       state.timeCoupon.expiresAt,
-    )}까지`;
+    )}까지. 인증은 완료됐고 다시 받을 필요가 없습니다.`;
+    if (sendButton) sendButton.disabled = true;
+    if (verifyButton) verifyButton.disabled = true;
     return;
   }
+
+  if (sendButton) sendButton.disabled = false;
+  if (verifyButton) verifyButton.disabled = false;
 
   if (state.timeCoupon?.usesRemaining === 0) {
     status.textContent = "메일 인증 쿠폰 5회를 모두 사용했습니다. 기본 크레딧으로 계속 이용할 수 있습니다.";
@@ -472,6 +479,12 @@ function renderTimeCoupon() {
   }
 
   status.textContent = "메일 인증 후 48시간 동안 영상/성분표 AI 분석 5회를 사용할 수 있습니다.";
+}
+
+function getAnalysisAccessText() {
+  if (isTimeCouponValid()) return `메일 인증 쿠폰 사용 가능: ${state.timeCoupon.usesRemaining}회 남음.`;
+  if (state.creditsRemaining >= 10) return `크레딧 사용 가능: ${state.creditsRemaining} credits 보유.`;
+  return "사용 가능한 AI 분석 쿠폰 또는 크레딧이 없습니다.";
 }
 
 function renderAiEndpoint() {
@@ -482,7 +495,7 @@ function renderAiEndpoint() {
   input.value = state.aiEndpoint || "";
   status.textContent = state.aiEndpoint
     ? `연결 대상: ${state.aiEndpoint}`
-    : "실제 LLM 분석은 서버 측 Worker URL이 연결되어야 실행됩니다.";
+    : `${getAnalysisAccessText()} 실제 LLM 분석을 실행하려면 AI Worker URL 연결만 추가로 필요합니다.`;
 }
 
 function getAiEndpoint() {
@@ -505,6 +518,17 @@ function consumeAnalysisAccess(cost = 10) {
 
   state.creditsRemaining = Math.max(0, state.creditsRemaining - cost);
   return "credits";
+}
+
+function goToAiEndpointSetup(reason) {
+  switchView("settings");
+  const status = $("#aiEndpointStatus");
+  if (status) {
+    status.textContent = `${getAnalysisAccessText()} ${reason}`;
+  }
+  window.setTimeout(() => {
+    $("#aiEndpoint")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 50);
 }
 
 function renderPlans() {
@@ -1101,13 +1125,14 @@ async function runRealVideoAnalysis() {
   }
 
   if (!getAiEndpoint()) {
-    $("#analysisOutput").innerHTML = `<p class="error-text">${escapeHtml(AI_ENDPOINT_HINT)}</p>`;
-    switchView("settings");
+    const message = "쿠폰 인증은 완료되어 있습니다. 실제 LLM 영상 분석을 실행하려면 AI Worker URL을 저장하고 연결 테스트를 통과해야 합니다.";
+    $("#analysisOutput").innerHTML = `<p class="error-text">${escapeHtml(message)}</p>`;
+    goToAiEndpointSetup(message);
     return;
   }
 
   if (!hasAnalysisAccess(10)) {
-    alert("AI 분석에 사용할 쿠폰 또는 크레딧이 부족합니다.");
+    $("#timeCouponStatus").textContent = "AI 분석에 사용할 쿠폰 또는 크레딧이 부족합니다. 메일 인증 쿠폰을 다시 발급하거나 플랜을 선택하세요.";
     switchView("settings");
     return;
   }
@@ -1335,13 +1360,14 @@ async function runNutritionAnalysis() {
   }
 
   if (!getAiEndpoint()) {
-    $("#nutritionOutput").innerHTML = `<p class="error-text">${escapeHtml(AI_ENDPOINT_HINT)}</p>`;
-    switchView("settings");
+    const message = "쿠폰 인증은 완료되어 있습니다. 실제 LLM 성분표 분석을 실행하려면 AI Worker URL을 저장하고 연결 테스트를 통과해야 합니다.";
+    $("#nutritionOutput").innerHTML = `<p class="error-text">${escapeHtml(message)}</p>`;
+    goToAiEndpointSetup(message);
     return;
   }
 
   if (!hasAnalysisAccess(10)) {
-    alert("AI 분석에 사용할 쿠폰 또는 크레딧이 부족합니다.");
+    $("#timeCouponStatus").textContent = "AI 분석에 사용할 쿠폰 또는 크레딧이 부족합니다. 메일 인증 쿠폰을 다시 발급하거나 플랜을 선택하세요.";
     switchView("settings");
     return;
   }

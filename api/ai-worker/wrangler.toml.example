@@ -5,3 +5,10 @@ compatibility_date = "2026-05-05"
 [vars]
 OPENAI_MODEL = "gpt-4.1-mini"
 ALLOWED_ORIGINS = "https://lovelyjhk.github.io,http://localhost:8787"
+ADMIN_USERNAME = "admin"
+
+# Create this binding first:
+# npx wrangler kv namespace create AI_CONFIG
+[[kv_namespaces]]
+binding = "AI_CONFIG"
+id = "replace-with-kv-namespace-id"
