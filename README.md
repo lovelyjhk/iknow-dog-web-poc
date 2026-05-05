@@ -33,6 +33,14 @@ gh repo create iknow-dog-web-poc --private --source . --remote origin --push
 
 그 다음 GitHub 저장소의 `Settings -> Pages`에서 GitHub Actions 배포를 활성화하면 `.github/workflows/deploy-web.yml`이 `web/` 폴더를 배포합니다.
 
+CLI로 바로 배포하려면:
+
+```powershell
+.\scripts\deploy-github-pages.ps1 -Owner lovelyjhk -Repo iknow-dog-web-poc
+```
+
+GitHub 로그인이 안 되어 있으면 스크립트가 `gh auth login` 명령을 안내합니다.
+
 ## 다음 단계
 
 - 실제 사용자 인증
@@ -40,4 +48,3 @@ gh repo create iknow-dog-web-poc --private --source . --remote origin --push
 - OpenAI Vision API 또는 자체 worker 연결
 - 병원 리포트 공유 링크
 - 결제/구독 연동
-
