@@ -2,31 +2,69 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>말하지 않아도 알아요 | 반려견 영상 건강 신호 분석</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#17433f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="말하지 않아도 알아요" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>말하지 않아도 알아요 | AI 반려견 건강 POC</title>
     <meta
       name="description"
-      content="반려견 보행/증상 영상을 기반으로 이상 신호와 병원 상담 필요도를 안내하는 POC 웹앱"
+      content="반려견 건강기록, 보행/증상 영상, 음식 안전, 병원 상담 리포트를 연결하는 모바일 우선 POC 웹앱"
     />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icon.svg" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar">
+      <aside class="sidebar" aria-label="서비스 메뉴">
         <div class="brand">
           <div class="brand-mark">M</div>
           <div>
-            <p class="eyebrow">AI pet health POC</p>
+            <p class="eyebrow">AI dog care platform</p>
             <h1>말하지 않아도 알아요</h1>
           </div>
         </div>
 
         <nav class="nav" aria-label="주요 메뉴">
-          <button class="nav-item active" data-view="dashboard">대시보드</button>
-          <button class="nav-item" data-view="profile">반려견 프로필</button>
-          <button class="nav-item" data-view="analysis">영상 분석</button>
-          <button class="nav-item" data-view="history">분석 이력</button>
-          <button class="nav-item" data-view="settings">요금제/쿠폰</button>
+          <button class="nav-item active" data-view="dashboard">
+            <span class="nav-icon">01</span>
+            <span>홈</span>
+          </button>
+          <button class="nav-item" data-view="profile">
+            <span class="nav-icon">02</span>
+            <span>프로필</span>
+          </button>
+          <button class="nav-item" data-view="health">
+            <span class="nav-icon">03</span>
+            <span>건강기록</span>
+          </button>
+          <button class="nav-item" data-view="analysis">
+            <span class="nav-icon">04</span>
+            <span>영상분석</span>
+          </button>
+          <button class="nav-item" data-view="food">
+            <span class="nav-icon">05</span>
+            <span>음식안전</span>
+          </button>
+          <button class="nav-item" data-view="report">
+            <span class="nav-icon">06</span>
+            <span>병원리포트</span>
+          </button>
+          <button class="nav-item" data-view="history">
+            <span class="nav-icon">07</span>
+            <span>이력</span>
+          </button>
+          <button class="nav-item" data-view="platform">
+            <span class="nav-icon">08</span>
+            <span>POC 범위</span>
+          </button>
+          <button class="nav-item" data-view="settings">
+            <span class="nav-icon">09</span>
+            <span>요금제</span>
+          </button>
         </nav>
 
         <section class="side-panel">
@@ -38,14 +76,26 @@
           <div class="meter" aria-hidden="true">
             <div id="creditMeter" class="meter-fill"></div>
           </div>
+          <p class="side-note">영상 분석 1회는 10 credits를 사용합니다.</p>
         </section>
       </aside>
 
       <main class="main">
+        <header class="mobile-header">
+          <div class="brand compact">
+            <div class="brand-mark">M</div>
+            <div>
+              <p class="eyebrow">Mobile PWA</p>
+              <h1>말하지 않아도 알아요</h1>
+            </div>
+          </div>
+          <button class="icon-button" id="installButton" type="button" hidden>설치</button>
+        </header>
+
         <section class="topbar">
           <div>
-            <p class="eyebrow">Web POC</p>
-            <h2 id="pageTitle">대시보드</h2>
+            <p class="eyebrow">POC service</p>
+            <h2 id="pageTitle">홈</h2>
           </div>
           <button class="primary-action" data-jump="analysis">영상 분석하기</button>
         </section>
@@ -53,39 +103,70 @@
         <section class="view active" id="dashboard">
           <div class="hero">
             <div>
-              <p class="eyebrow">보행/증상 영상 기반 건강 신호 분석</p>
-              <h3>아픈지 말하지 못하는 반려견의 작은 변화를 기록하고 확인하세요.</h3>
+              <p class="eyebrow">영상 건강 신호 분석 + 병원 상담 준비</p>
+              <h3>반려견의 작은 변화를 기록에서 상담 행동까지 연결합니다.</h3>
               <p>
-                이 POC는 반려견 프로필, 보호자 메모, 증상 체크, 영상 정보를 바탕으로
-                이상 신호와 병원 상담 필요도를 안내합니다.
+                보호자가 매일 남기는 건강기록, 보행/증상 영상, 음식 안전 정보, 병원 상담 리포트를
+                하나의 모바일 POC에서 확인합니다.
               </p>
               <div class="hero-actions">
-                <button class="primary-action" data-jump="profile">프로필 등록</button>
-                <button class="secondary-action" data-jump="analysis">영상 업로드</button>
+                <button class="primary-action" data-jump="analysis">영상 분석</button>
+                <button class="secondary-action" data-jump="health">오늘 기록</button>
+                <button class="secondary-action" data-jump="report">상담 리포트</button>
               </div>
             </div>
             <div class="status-card">
-              <p class="eyebrow">최근 분석</p>
+              <p class="eyebrow">오늘의 상태</p>
               <h4 id="latestRisk">아직 분석 없음</h4>
-              <p id="latestSummary">반려견 프로필을 등록하고 첫 영상을 분석해보세요.</p>
+              <p id="latestSummary">반려견 프로필을 등록하고 첫 건강 기록 또는 영상을 분석해보세요.</p>
+              <div class="status-mini">
+                <span id="dogSnapshot">프로필 없음</span>
+                <span id="logSnapshot">기록 없음</span>
+              </div>
             </div>
+          </div>
+
+          <div class="grid four">
+            <button class="quick-card" data-jump="profile">
+              <strong>프로필</strong>
+              <span>품종, 나이, 체중, 질환</span>
+            </button>
+            <button class="quick-card" data-jump="health">
+              <strong>건강기록</strong>
+              <span>식욕, 배변, 통증, 활동</span>
+            </button>
+            <button class="quick-card" data-jump="analysis">
+              <strong>영상분석</strong>
+              <span>보행, 증상, 회복 경과</span>
+            </button>
+            <button class="quick-card" data-jump="report">
+              <strong>병원리포트</strong>
+              <span>상담 전 핵심 요약</span>
+            </button>
           </div>
 
           <div class="grid two">
             <article class="card">
-              <h3>POC 핵심 흐름</h3>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Journey</p>
+                  <h3>표준 사용자 흐름</h3>
+                </div>
+              </div>
               <ol class="flow-list">
                 <li>반려견 프로필 등록</li>
-                <li>보행/증상 영상 업로드</li>
-                <li>보호자 메모와 증상 체크</li>
-                <li>AI 이상 신호 분석 결과 확인</li>
+                <li>오늘 건강 체크 또는 증상 영상 업로드</li>
+                <li>위험도와 이상 신호 확인</li>
+                <li>음식 안전 또는 관리 가이드 확인</li>
+                <li>병원 상담 리포트로 증상 전달 준비</li>
               </ol>
             </article>
             <article class="card warning">
+              <p class="eyebrow">Safety</p>
               <h3>의료 안전 원칙</h3>
               <p>
-                본 서비스는 질병을 확정 진단하지 않습니다. 영상과 기록에서 확인되는
-                이상 신호를 보호자에게 안내하고, 필요 시 수의사 상담을 권장합니다.
+                본 서비스는 질병명을 확정하지 않습니다. 영상과 기록에서 확인되는 이상 신호를
+                안내하고, 필요한 경우 수의사 상담을 권장하는 보조 도구입니다.
               </p>
             </article>
           </div>
@@ -104,28 +185,19 @@
             <div class="form-grid">
               <label>
                 이름
-                <input id="dogName" name="dogName" placeholder="예: 보리" required />
+                <input id="dogName" name="dogName" placeholder="예: 보리" required autocomplete="off" />
               </label>
               <label>
                 품종
-                <input id="breed" name="breed" placeholder="예: 비숑프리제" required />
+                <input id="breed" name="breed" placeholder="예: 비숑프리제" required autocomplete="off" />
               </label>
               <label>
                 나이
-                <input id="age" name="age" type="number" min="0" max="30" placeholder="5" required />
+                <input id="age" name="age" inputmode="numeric" type="number" min="0" max="30" placeholder="5" required />
               </label>
               <label>
                 체중 kg
-                <input
-                  id="weight"
-                  name="weight"
-                  type="number"
-                  min="0.5"
-                  max="100"
-                  step="0.1"
-                  placeholder="5.2"
-                  required
-                />
+                <input id="weight" name="weight" inputmode="decimal" type="number" min="0.5" max="100" step="0.1" placeholder="5.2" required />
               </label>
               <label>
                 성별
@@ -155,8 +227,85 @@
               ></textarea>
             </label>
 
-            <button class="primary-action" type="submit">프로필 저장</button>
+            <button class="primary-action full" type="submit">프로필 저장</button>
           </form>
+        </section>
+
+        <section class="view" id="health">
+          <div class="grid two">
+            <form class="card form" id="healthForm">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Daily check</p>
+                  <h3>오늘 건강기록</h3>
+                </div>
+                <span class="save-state">1 credit</span>
+              </div>
+
+              <div class="form-grid">
+                <label>
+                  식욕
+                  <select id="appetite">
+                    <option value="normal">평소와 같음</option>
+                    <option value="low">줄어듦</option>
+                    <option value="none">거의 없음</option>
+                  </select>
+                </label>
+                <label>
+                  배변
+                  <select id="stool">
+                    <option value="normal">정상</option>
+                    <option value="soft">묽음</option>
+                    <option value="diarrhea">설사</option>
+                    <option value="bloody">혈변 의심</option>
+                  </select>
+                </label>
+                <label>
+                  활동량
+                  <select id="activity">
+                    <option value="normal">평소와 같음</option>
+                    <option value="low">줄어듦</option>
+                    <option value="very_low">매우 낮음</option>
+                  </select>
+                </label>
+                <label>
+                  수면
+                  <select id="sleep">
+                    <option value="normal">평소와 같음</option>
+                    <option value="more">늘어남</option>
+                    <option value="restless">불안정함</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="symptom-grid">
+                <label><input type="checkbox" name="dailySymptom" value="vomiting" /> 구토</label>
+                <label><input type="checkbox" name="dailySymptom" value="coughing" /> 기침</label>
+                <label><input type="checkbox" name="dailySymptom" value="limping" /> 절뚝거림</label>
+                <label><input type="checkbox" name="dailySymptom" value="scratching" /> 긁음</label>
+                <label><input type="checkbox" name="dailySymptom" value="pain" /> 통증 반응</label>
+                <label><input type="checkbox" name="dailySymptom" value="breathing" /> 호흡 이상</label>
+              </div>
+
+              <label>
+                메모
+                <textarea id="dailyMemo" rows="4" placeholder="예: 계단 내려갈 때 오른쪽 뒷다리를 들었어요."></textarea>
+              </label>
+
+              <button class="primary-action full" type="submit">오늘 기록 저장</button>
+            </form>
+
+            <article class="card">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Timeline</p>
+                  <h3>최근 건강기록</h3>
+                </div>
+                <button class="secondary-action small" id="clearHealthLogs" type="button">초기화</button>
+              </div>
+              <div class="history-list" id="healthLogList"></div>
+            </article>
+          </div>
         </section>
 
         <section class="view" id="analysis">
@@ -180,10 +329,20 @@
               </label>
 
               <label class="upload-box" for="videoFile">
-                <input id="videoFile" name="videoFile" type="file" accept="video/*" />
-                <span>영상을 선택하거나 촬영 파일을 업로드하세요</span>
-                <small>권장 길이: 10~60초</small>
+                <input id="videoFile" name="videoFile" type="file" accept="video/*" capture="environment" />
+                <span>촬영하거나 갤러리 영상을 선택하세요</span>
+                <small>권장 길이 10~60초, 가로/세로 모두 지원</small>
               </label>
+
+              <div class="url-input-row">
+                <label>
+                  영상 URL 붙여넣기
+                  <input id="videoUrl" name="videoUrl" type="url" placeholder="https://example.com/sample.mp4" inputmode="url" autocomplete="off" />
+                </label>
+                <button class="secondary-action" id="useSampleVideoUrl" type="button">샘플</button>
+                <button class="secondary-action" id="loadVideoUrl" type="button">불러오기</button>
+              </div>
+              <p class="hint">MP4/WebM처럼 브라우저에서 직접 재생 가능한 공개 URL을 권장합니다. 유튜브/네이버TV 링크는 다음 단계에서 임베드 처리로 확장합니다.</p>
 
               <div class="symptom-grid" aria-label="증상 체크">
                 <label><input type="checkbox" name="symptom" value="limping" /> 절뚝거림</label>
@@ -196,15 +355,10 @@
 
               <label>
                 보호자 메모
-                <textarea
-                  id="ownerNote"
-                  name="ownerNote"
-                  rows="5"
-                  placeholder="예: 산책 중 오른쪽 뒷다리를 살짝 들었고 계단 내려갈 때 망설였어요."
-                ></textarea>
+                <textarea id="ownerNote" name="ownerNote" rows="5" placeholder="예: 산책 중 오른쪽 뒷다리를 살짝 들었고 계단 내려갈 때 망설였어요."></textarea>
               </label>
 
-              <button class="primary-action" type="submit">이상 신호 분석 시작</button>
+              <button class="primary-action full" type="submit">이상 신호 분석 시작</button>
             </form>
 
             <article class="card result-card" id="resultCard">
@@ -227,6 +381,59 @@
           </div>
         </section>
 
+        <section class="view" id="food">
+          <div class="grid two">
+            <article class="card form">
+              <p class="eyebrow">Food safety</p>
+              <h3>음식 안전 검색</h3>
+              <label>
+                음식명
+                <input id="foodQuery" placeholder="예: 초콜릿, 닭가슴살, 포도, 고구마" autocomplete="off" />
+              </label>
+              <button class="primary-action full" id="searchFood" type="button">안전성 확인</button>
+              <div class="analysis-output" id="foodResult">
+                <p>음식명을 입력하면 급여 가능성, 주의점, 병원 상담 기준을 안내합니다.</p>
+              </div>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">Rule examples</p>
+              <h3>POC 음식 데이터</h3>
+              <div class="data-table">
+                <div><strong>위험</strong><span>초콜릿, 포도, 양파, 마늘, 자일리톨</span></div>
+                <div><strong>소량</strong><span>치즈, 우유, 계란, 연어, 사과</span></div>
+                <div><strong>대체로 안전</strong><span>고구마, 닭가슴살, 단호박, 오이</span></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="report">
+          <div class="grid two">
+            <article class="card">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Vet pre-visit report</p>
+                  <h3>병원 상담 리포트</h3>
+                </div>
+                <button class="secondary-action small" id="copyReport" type="button">복사</button>
+              </div>
+              <pre class="report-box" id="vetReport"></pre>
+            </article>
+            <article class="card">
+              <p class="eyebrow">Next action</p>
+              <h3>상담 연결 POC</h3>
+              <div class="action-list">
+                <button class="quick-card compact-card">24시 병원 우선 안내</button>
+                <button class="quick-card compact-card">정형외과/내과 진료과 매칭</button>
+                <button class="quick-card compact-card">카카오맵/네이버지도 연결</button>
+                <button class="quick-card compact-card">보험 청구 서류 체크리스트</button>
+              </div>
+              <p class="hint">현재는 리포트 생성까지만 동작하며 병원 예약, 보험 청구 대행은 정식 범위에서 분리합니다.</p>
+            </article>
+          </div>
+        </section>
+
         <section class="view" id="history">
           <article class="card">
             <div class="section-heading">
@@ -238,6 +445,56 @@
             </div>
             <div class="history-list" id="historyList"></div>
           </article>
+        </section>
+
+        <section class="view" id="platform">
+          <div class="card">
+            <p class="eyebrow">Expanded POC scope</p>
+            <h3>표준 플랫폼 범위도</h3>
+            <div class="platform-map">
+              <section>
+                <strong>보호자 앱</strong>
+                <span>프로필, 건강기록, 영상분석, 음식안전, 리포트</span>
+              </section>
+              <section>
+                <strong>AI 분석 계층</strong>
+                <span>영상 프레임, 증상 체크, 최근 로그, 위험도 산출</span>
+              </section>
+              <section>
+                <strong>병원 연결 계층</strong>
+                <span>상담 권장, 진료과 매칭, 사전 문진 리포트</span>
+              </section>
+              <section>
+                <strong>수익/운영 계층</strong>
+                <span>크레딧, 쿠폰, 구독, 제휴 병원, 보험 확장</span>
+              </section>
+            </div>
+          </div>
+
+          <div class="grid two">
+            <article class="card">
+              <p class="eyebrow">Standard modules</p>
+              <h3>POC 모듈 정의</h3>
+              <div class="data-table">
+                <div><strong>Identity</strong><span>보호자, 반려견, 구독 상태</span></div>
+                <div><strong>Capture</strong><span>건강 로그, 영상, 보호자 메모</span></div>
+                <div><strong>Analyze</strong><span>위험도, 이상 신호, 권장 행동</span></div>
+                <div><strong>Guide</strong><span>음식 안전, 병원 상담 기준, 리포트</span></div>
+                <div><strong>Operate</strong><span>크레딧, 쿠폰, 이력, 고지문</span></div>
+              </div>
+            </article>
+            <article class="card">
+              <p class="eyebrow">Roadmap</p>
+              <h3>서비스 확장 순서</h3>
+              <ol class="flow-list">
+                <li>웹 POC: 모바일 설치형 정적 앱</li>
+                <li>API 연결: Supabase Auth/Storage/PostgreSQL</li>
+                <li>AI Worker: 영상 프레임 추출과 Vision 모델</li>
+                <li>병원 제휴: 리포트 공유, 진료과 매칭</li>
+                <li>보험/구독: 제휴 혜택, 청구 준비 도우미</li>
+              </ol>
+            </article>
+          </div>
         </section>
 
         <section class="view" id="settings">
@@ -252,16 +509,22 @@
               <h3>쿠폰 등록</h3>
               <label>
                 쿠폰 코드
-                <input id="couponCode" placeholder="WELCOME3000" />
+                <input id="couponCode" placeholder="WELCOME3000" autocomplete="off" />
               </label>
-              <button class="primary-action" id="redeemCoupon" type="button">쿠폰 적용</button>
-              <p class="hint" id="couponMessage">
-                `WELCOME3000` 입력 시 Basic 1개월 무료 크레딧을 지급합니다.
-              </p>
+              <button class="primary-action full" id="redeemCoupon" type="button">쿠폰 적용</button>
+              <p class="hint" id="couponMessage">`WELCOME3000` 입력 시 Basic 1개월 무료 크레딧을 지급합니다.</p>
             </article>
           </div>
         </section>
       </main>
+
+      <nav class="bottom-nav" aria-label="모바일 하단 메뉴">
+        <button class="bottom-item active" data-view="dashboard">홈</button>
+        <button class="bottom-item" data-view="health">기록</button>
+        <button class="bottom-item primary-tab" data-view="analysis">분석</button>
+        <button class="bottom-item" data-view="report">리포트</button>
+        <button class="bottom-item" data-view="platform">범위</button>
+      </nav>
     </div>
 
     <script src="./app.js"></script>

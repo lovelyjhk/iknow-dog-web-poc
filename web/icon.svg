@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="말하지 않아도 알아요">
+  <rect width="512" height="512" rx="96" fill="#17433f"/>
+  <circle cx="162" cy="198" r="40" fill="#fff8ee"/>
+  <circle cx="350" cy="198" r="40" fill="#fff8ee"/>
+  <path d="M154 292c44 54 160 54 204 0" fill="none" stroke="#fff8ee" stroke-width="32" stroke-linecap="round"/>
+  <path d="M104 130c-22-46-12-82 28-102 38 24 62 54 72 90" fill="#d9832e"/>
+  <path d="M408 130c22-46 12-82-28-102-38 24-62 54-72 90" fill="#d9832e"/>
+  <path d="M142 376h228" stroke="#d9832e" stroke-width="30" stroke-linecap="round"/>
+</svg>
