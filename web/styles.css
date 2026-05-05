@@ -38,6 +38,11 @@ body {
   color: var(--ink);
 }
 
+body.legal-page {
+  display: block;
+  padding: 24px;
+}
+
 button,
 input,
 select,
@@ -249,6 +254,11 @@ textarea:focus-visible {
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--ink);
+}
+
+.danger-action {
+  border-color: rgba(198, 66, 53, 0.28);
+  color: var(--red);
 }
 
 .full {
@@ -521,6 +531,14 @@ textarea:focus {
   background: #000;
 }
 
+.video-preview iframe {
+  display: block;
+  width: 100%;
+  min-height: 360px;
+  border: 0;
+  background: #000;
+}
+
 .analysis-output {
   line-height: 1.65;
 }
@@ -657,8 +675,63 @@ textarea:focus {
   line-height: 1.55;
 }
 
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.legal-links a {
+  color: var(--teal);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.legal-links a:hover {
+  text-decoration: underline;
+}
+
 .bottom-nav {
   display: none;
+}
+
+.legal-document {
+  width: min(860px, 100%);
+  margin: 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 28px;
+  line-height: 1.75;
+}
+
+.legal-document h1,
+.legal-document h2 {
+  letter-spacing: 0;
+}
+
+.legal-document h1 {
+  margin: 0 0 12px;
+}
+
+.legal-document h2 {
+  margin: 28px 0 8px;
+  font-size: 20px;
+}
+
+.legal-back {
+  display: inline-flex;
+  margin-bottom: 20px;
+  color: var(--teal);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.legal-back:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 1100px) {

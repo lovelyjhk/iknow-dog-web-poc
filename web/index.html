@@ -7,10 +7,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="말하지 않아도 알아요" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>말하지 않아도 알아요 | AI 반려견 건강 POC</title>
+    <title>말하지 않아도 알아요 | AI 반려견 건강관리</title>
     <meta
       name="description"
-      content="반려견 건강기록, 보행/증상 영상, 음식 안전, 병원 상담 리포트를 연결하는 모바일 우선 POC 웹앱"
+      content="반려견 건강기록, 보행/증상 영상, 음식 안전, 병원 상담 리포트를 연결하는 모바일 건강관리 웹앱"
     />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
@@ -49,20 +49,28 @@
             <span class="nav-icon">05</span>
             <span>음식안전</span>
           </button>
-          <button class="nav-item" data-view="report">
+          <button class="nav-item" data-view="care">
             <span class="nav-icon">06</span>
+            <span>병원/장소</span>
+          </button>
+          <button class="nav-item" data-view="community">
+            <span class="nav-icon">07</span>
+            <span>커뮤니티</span>
+          </button>
+          <button class="nav-item" data-view="report">
+            <span class="nav-icon">08</span>
             <span>병원리포트</span>
           </button>
           <button class="nav-item" data-view="history">
-            <span class="nav-icon">07</span>
+            <span class="nav-icon">09</span>
             <span>이력</span>
           </button>
           <button class="nav-item" data-view="platform">
-            <span class="nav-icon">08</span>
-            <span>POC 범위</span>
+            <span class="nav-icon">10</span>
+            <span>플랫폼</span>
           </button>
           <button class="nav-item" data-view="settings">
-            <span class="nav-icon">09</span>
+            <span class="nav-icon">11</span>
             <span>요금제</span>
           </button>
         </nav>
@@ -94,7 +102,7 @@
 
         <section class="topbar">
           <div>
-            <p class="eyebrow">POC service</p>
+            <p class="eyebrow">Beta service</p>
             <h2 id="pageTitle">홈</h2>
           </div>
           <button class="primary-action" data-jump="analysis">영상 분석하기</button>
@@ -143,6 +151,14 @@
               <strong>병원리포트</strong>
               <span>상담 전 핵심 요약</span>
             </button>
+            <button class="quick-card" data-jump="care">
+              <strong>케어 연결</strong>
+              <span>병원, 장소, 응급 검색</span>
+            </button>
+            <button class="quick-card" data-jump="community">
+              <strong>커뮤니티</strong>
+              <span>품종별 경험 공유</span>
+            </button>
           </div>
 
           <div class="grid two">
@@ -150,7 +166,7 @@
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Journey</p>
-                  <h3>표준 사용자 흐름</h3>
+            <h3>표준 사용자 흐름</h3>
                 </div>
               </div>
               <ol class="flow-list">
@@ -342,7 +358,7 @@
                 <button class="secondary-action" id="useSampleVideoUrl" type="button">샘플</button>
                 <button class="secondary-action" id="loadVideoUrl" type="button">불러오기</button>
               </div>
-              <p class="hint">MP4/WebM처럼 브라우저에서 직접 재생 가능한 공개 URL을 권장합니다. 유튜브/네이버TV 링크는 다음 단계에서 임베드 처리로 확장합니다.</p>
+              <p class="hint">MP4/WebM 원본 URL은 직접 재생하고, YouTube/Shorts 링크는 미리보기 임베드로 표시합니다. 정식 AI 분석은 직접 촬영 파일 또는 원본 영상 URL 기준입니다.</p>
 
               <div class="symptom-grid" aria-label="증상 체크">
                 <label><input type="checkbox" name="symptom" value="limping" /> 절뚝거림</label>
@@ -408,6 +424,71 @@
           </div>
         </section>
 
+        <section class="view" id="care">
+          <div class="grid two">
+            <article class="card form">
+              <p class="eyebrow">Care connect</p>
+              <h3>병원 검색</h3>
+              <p class="hint">현재 베타는 지도 API 연동 전 단계로, 보호자의 위치 또는 입력 키워드를 지도 검색으로 연결합니다.</p>
+              <label>
+                검색 기준
+                <input id="careQuery" placeholder="예: 강남 정형외과 동물병원, 24시 동물병원" autocomplete="off" />
+              </label>
+              <div class="action-list">
+                <button class="primary-action" id="openNaverMap" type="button">네이버지도 검색</button>
+                <button class="secondary-action" id="openKakaoMap" type="button">카카오맵 검색</button>
+                <button class="secondary-action" id="useCurrentLocation" type="button">현재 위치 사용</button>
+              </div>
+              <p class="hint" id="locationStatus">위치를 허용하면 “내 주변 24시 동물병원” 검색어로 연결합니다.</p>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">Place guide</p>
+              <h3>애견동반 장소 적합도</h3>
+              <div class="data-table">
+                <div><strong>관절 주의</strong><span>미끄러운 바닥, 높은 계단, 장시간 산책 코스는 피합니다.</span></div>
+                <div><strong>호흡 주의</strong><span>더운 실외, 밀집 카페, 장시간 이동은 피하고 실내 휴식 장소를 우선합니다.</span></div>
+                <div><strong>노령견</strong><span>24시 병원 거리, 주차, 엘리베이터, 짧은 동선을 우선합니다.</span></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="community">
+          <div class="grid two">
+            <form class="card form" id="communityForm">
+              <p class="eyebrow">Community beta</p>
+              <h3>경험 공유</h3>
+              <label>
+                주제
+                <select id="postTopic">
+                  <option value="증상 질문">증상 질문</option>
+                  <option value="병원 후기">병원 후기</option>
+                  <option value="음식/영양">음식/영양</option>
+                  <option value="산책/장소">산책/장소</option>
+                </select>
+              </label>
+              <label>
+                내용
+                <textarea id="postBody" rows="5" placeholder="예: 노령견이 계단을 피하려고 할 때 어떻게 기록하면 좋을까요?" required></textarea>
+              </label>
+              <button class="primary-action full" type="submit">게시글 저장</button>
+              <p class="hint">현재 게시글은 이 브라우저에만 저장됩니다. 서버 커뮤니티는 인증/신고/관리자 기능과 함께 연결합니다.</p>
+            </form>
+
+            <article class="card">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Local board</p>
+                  <h3>최근 게시글</h3>
+                </div>
+                <button class="secondary-action small" id="clearCommunity" type="button">초기화</button>
+              </div>
+              <div class="history-list" id="communityList"></div>
+            </article>
+          </div>
+        </section>
+
         <section class="view" id="report">
           <div class="grid two">
             <article class="card">
@@ -449,7 +530,7 @@
 
         <section class="view" id="platform">
           <div class="card">
-            <p class="eyebrow">Expanded POC scope</p>
+            <p class="eyebrow">Service scope</p>
             <h3>표준 플랫폼 범위도</h3>
             <div class="platform-map">
               <section>
@@ -487,7 +568,7 @@
               <p class="eyebrow">Roadmap</p>
               <h3>서비스 확장 순서</h3>
               <ol class="flow-list">
-                <li>웹 POC: 모바일 설치형 정적 앱</li>
+                <li>웹 베타: 모바일 설치형 정적 앱</li>
                 <li>API 연결: Supabase Auth/Storage/PostgreSQL</li>
                 <li>AI Worker: 영상 프레임 추출과 Vision 모델</li>
                 <li>병원 제휴: 리포트 공유, 진료과 매칭</li>
@@ -500,7 +581,7 @@
         <section class="view" id="settings">
           <div class="grid two">
             <article class="card">
-              <p class="eyebrow">Subscription POC</p>
+              <p class="eyebrow">Subscription</p>
               <h3>요금제</h3>
               <div class="plans" id="plans"></div>
             </article>
@@ -515,6 +596,35 @@
               <p class="hint" id="couponMessage">`WELCOME3000` 입력 시 Basic 1개월 무료 크레딧을 지급합니다.</p>
             </article>
           </div>
+
+          <div class="grid two">
+            <article class="card">
+              <p class="eyebrow">Data control</p>
+              <h3>내 데이터 관리</h3>
+              <p class="hint">
+                현재 베타는 서버에 데이터를 전송하지 않고 이 브라우저의 저장소에만 프로필, 기록, 분석 이력을 보관합니다.
+              </p>
+              <div class="action-list">
+                <button class="secondary-action" id="exportData" type="button">데이터 내보내기</button>
+                <button class="secondary-action danger-action" id="resetData" type="button">로컬 데이터 삭제</button>
+              </div>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">Launch notice</p>
+              <h3>베타 출시 고지</h3>
+              <div class="data-table">
+                <div><strong>의료 고지</strong><span>질병명을 확정하지 않고 이상 신호와 상담 필요도를 안내합니다.</span></div>
+                <div><strong>개인정보</strong><span>현재 버전은 브라우저 로컬 저장 방식입니다.</span></div>
+                <div><strong>운영 상태</strong><span>베타 서비스이며 실제 병원 예약/보험 청구는 제공하지 않습니다.</span></div>
+              </div>
+              <div class="legal-links">
+                <a href="./privacy.html">개인정보 처리방침</a>
+                <a href="./terms.html">이용약관</a>
+                <span id="appVersion">v0.1.0</span>
+              </div>
+            </article>
+          </div>
         </section>
       </main>
 
@@ -522,8 +632,8 @@
         <button class="bottom-item active" data-view="dashboard">홈</button>
         <button class="bottom-item" data-view="health">기록</button>
         <button class="bottom-item primary-tab" data-view="analysis">분석</button>
-        <button class="bottom-item" data-view="report">리포트</button>
-        <button class="bottom-item" data-view="platform">범위</button>
+        <button class="bottom-item" data-view="care">케어</button>
+        <button class="bottom-item" data-view="settings">내정보</button>
       </nav>
     </div>
 

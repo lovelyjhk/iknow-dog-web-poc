@@ -10,6 +10,14 @@ Thumbs.db
 # Logs
 *.log
 
+# Local datasets and downloaded tooling
+.local/
+datasets/
+*.zip
+aihubshell
+aihubshell.exe
+aihub-download.sh
+
 # Environment
 .env
 .env.*

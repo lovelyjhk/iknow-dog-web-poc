@@ -169,6 +169,7 @@ const defaultState = {
   dog: null,
   healthLogs: [],
   analyses: [],
+  communityPosts: [],
   redeemedCoupons: [],
 };
 
@@ -203,6 +204,33 @@ function normalizeText(value) {
     .replace(/\s/g, "");
 }
 
+function getYouTubeEmbedUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, "");
+    let videoId = "";
+
+    if (host === "youtu.be") {
+      videoId = url.pathname.split("/").filter(Boolean)[0] || "";
+    }
+
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      if (url.pathname.startsWith("/shorts/")) {
+        videoId = url.pathname.split("/").filter(Boolean)[1] || "";
+      } else if (url.pathname.startsWith("/embed/")) {
+        videoId = url.pathname.split("/").filter(Boolean)[1] || "";
+      } else {
+        videoId = url.searchParams.get("v") || "";
+      }
+    }
+
+    if (!/^[a-zA-Z0-9_-]{6,}$/.test(videoId)) return null;
+    return `https://www.youtube.com/embed/${videoId}`;
+  } catch {
+    return null;
+  }
+}
+
 function loadState() {
   try {
     const current = localStorage.getItem(STORAGE_KEY);
@@ -216,6 +244,7 @@ function loadState() {
       : plans[next.plan].credits;
     next.healthLogs = Array.isArray(next.healthLogs) ? next.healthLogs : [];
     next.analyses = Array.isArray(next.analyses) ? next.analyses : [];
+    next.communityPosts = Array.isArray(next.communityPosts) ? next.communityPosts : [];
     next.redeemedCoupons = Array.isArray(next.redeemedCoupons) ? next.redeemedCoupons : [];
 
     return next;
@@ -274,6 +303,7 @@ function renderState() {
   renderLatest();
   renderHealthLogs();
   renderHistory();
+  renderCommunity();
   renderPlans();
   renderVetReport();
 }
@@ -353,6 +383,31 @@ function renderHistory() {
           </header>
           <p>${escapeHtml(item.summary)}</p>
           <small>${escapeHtml(item.videoName || "영상 파일")} · ${escapeHtml(item.videoTypeLabel || "영상")}</small>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function renderCommunity() {
+  const list = $("#communityList");
+  if (!list) return;
+
+  if (!state.communityPosts.length) {
+    list.innerHTML = '<p class="hint">아직 저장된 게시글이 없습니다.</p>';
+    return;
+  }
+
+  list.innerHTML = state.communityPosts
+    .map(
+      (item) => `
+        <article class="history-item">
+          <header>
+            <strong>${escapeHtml(item.topic)}</strong>
+            <span>${escapeHtml(formatDate(item.createdAt))}</span>
+          </header>
+          <p>${escapeHtml(item.body)}</p>
+          <small>${escapeHtml(state.dog?.breed || "전체 품종")} 보호자 경험 공유</small>
         </article>
       `,
     )
@@ -624,6 +679,7 @@ function showVideoPreview(file) {
 
 function loadVideoFromUrl() {
   const url = $("#videoUrl").value.trim();
+  const youtubeEmbedUrl = getYouTubeEmbedUrl(url);
 
   if (!url) {
     alert("영상 URL을 붙여넣으세요.");
@@ -650,8 +706,22 @@ function loadVideoFromUrl() {
   };
   selectedVideoUrl = url;
   selectedVideoMeta = null;
-  selectedVideoMode = "url";
+  selectedVideoMode = youtubeEmbedUrl ? "youtube" : "url";
   $("#videoFile").value = "";
+
+  if (youtubeEmbedUrl) {
+    $("#videoPreview").innerHTML = `
+      <iframe
+        title="YouTube video preview"
+        src="${escapeHtml(youtubeEmbedUrl)}"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen
+      ></iframe>
+      <p class="hint">YouTube/Shorts 링크는 원본 영상을 가져오지 않고 임베드 미리보기로 표시합니다. 정식 AI 분석에는 직접 촬영한 파일 또는 MP4/WebM 원본 URL이 필요합니다.</p>
+    `;
+    return;
+  }
+
   $("#videoPreview").innerHTML = `
     <video controls playsinline crossorigin="anonymous" src="${escapeHtml(url)}"></video>
     <p class="hint">URL 영상이 로드되었습니다. 재생이 안 되면 해당 서버가 브라우저 재생 또는 외부 접근을 막는 경우입니다.</p>
@@ -699,6 +769,82 @@ function searchFood() {
     <p><strong>개인별 주의:</strong> ${escapeHtml(allergyNote)}</p>
     <p class="hint">음식 안전 정보는 일반 참고용입니다. 구토, 설사, 무기력 등 이상 반응이 있으면 병원 상담을 권장합니다.</p>
   `;
+}
+
+function getCareQuery() {
+  const base = $("#careQuery")?.value.trim();
+  if (base) return base;
+
+  const latest = state.analyses[0];
+  if (latest?.riskLevel === "VET_RECOMMENDED") return "24시 동물병원 정형외과";
+  if (latest?.riskLevel === "CAUTION") return "동물병원 상담";
+  return "내 주변 24시 동물병원";
+}
+
+function openMap(provider) {
+  const query = encodeURIComponent(getCareQuery());
+  const url =
+    provider === "kakao"
+      ? `https://map.kakao.com/link/search/${query}`
+      : `https://map.naver.com/p/search/${query}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function useCurrentLocation() {
+  const status = $("#locationStatus");
+  if (!navigator.geolocation) {
+    status.textContent = "이 브라우저에서는 위치 기능을 사용할 수 없습니다.";
+    return;
+  }
+
+  status.textContent = "현재 위치를 확인하는 중입니다...";
+  navigator.geolocation.getCurrentPosition(
+    () => {
+      $("#careQuery").value = "내 주변 24시 동물병원";
+      status.textContent = "위치가 확인되었습니다. 지도 검색 버튼을 눌러 주변 병원을 확인하세요.";
+    },
+    () => {
+      status.textContent = "위치 권한이 거부되었습니다. 지역명 또는 병원 유형을 직접 입력하세요.";
+    },
+    { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
+  );
+}
+
+function exportLocalData() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: "말하지 않아도 알아요",
+    version: "0.1.0",
+    state,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `iknow-dog-export-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function resetLocalData() {
+  const confirmed = window.confirm("이 브라우저에 저장된 프로필, 건강기록, 분석 이력, 게시글을 모두 삭제할까요?");
+  if (!confirmed) return;
+
+  localStorage.removeItem(STORAGE_KEY);
+  LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+  state = { ...defaultState };
+  selectedVideo = null;
+  selectedVideoMeta = null;
+  selectedVideoUrl = null;
+  selectedVideoMode = null;
+  $("#videoPreview").innerHTML = "<p>선택한 영상 미리보기가 여기에 표시됩니다.</p>";
+  $("#analysisOutput").innerHTML = "<p>영상과 메모를 입력한 뒤 분석을 시작하세요.</p>";
+  $("#riskBadge").className = "risk-badge idle";
+  $("#riskBadge").textContent = "대기";
+  renderState();
+  switchView("dashboard");
 }
 
 function formatDate(value) {
@@ -872,6 +1018,42 @@ function bindEvents() {
       alert("브라우저에서 복사를 허용하지 않았습니다.");
     }
   });
+
+  $("#openNaverMap").addEventListener("click", () => openMap("naver"));
+  $("#openKakaoMap").addEventListener("click", () => openMap("kakao"));
+  $("#useCurrentLocation").addEventListener("click", useCurrentLocation);
+  $("#careQuery").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      openMap("naver");
+    }
+  });
+
+  $("#communityForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const body = $("#postBody").value.trim();
+    if (!body) return;
+
+    state.communityPosts = [
+      {
+        id: makeId(),
+        createdAt: new Date().toISOString(),
+        topic: $("#postTopic").value,
+        body,
+      },
+      ...state.communityPosts,
+    ].slice(0, 20);
+    $("#postBody").value = "";
+    saveState();
+  });
+
+  $("#clearCommunity").addEventListener("click", () => {
+    state.communityPosts = [];
+    saveState();
+  });
+
+  $("#exportData").addEventListener("click", exportLocalData);
+  $("#resetData").addEventListener("click", resetLocalData);
 
   $("#clearHistory").addEventListener("click", () => {
     state.analyses = [];

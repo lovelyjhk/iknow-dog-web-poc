@@ -2,6 +2,8 @@ const CACHE_NAME = "iknow-dog-web-poc-v3";
 const ASSETS = [
   "./",
   "./index.html",
+  "./privacy.html",
+  "./terms.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
