@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>말하지 않아도 알아요 | 반려견 영상 건강 신호 분석</title>
+    <meta
+      name="description"
+      content="반려견 보행/증상 영상을 기반으로 이상 신호와 병원 상담 필요도를 안내하는 POC 웹앱"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">M</div>
+          <div>
+            <p class="eyebrow">AI pet health POC</p>
+            <h1>말하지 않아도 알아요</h1>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="주요 메뉴">
+          <button class="nav-item active" data-view="dashboard">대시보드</button>
+          <button class="nav-item" data-view="profile">반려견 프로필</button>
+          <button class="nav-item" data-view="analysis">영상 분석</button>
+          <button class="nav-item" data-view="history">분석 이력</button>
+          <button class="nav-item" data-view="settings">요금제/쿠폰</button>
+        </nav>
+
+        <section class="side-panel">
+          <p class="eyebrow">현재 플랜</p>
+          <div class="plan-row">
+            <strong id="currentPlanName">Free</strong>
+            <span id="creditCount">10 credits</span>
+          </div>
+          <div class="meter" aria-hidden="true">
+            <div id="creditMeter" class="meter-fill"></div>
+          </div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <section class="topbar">
+          <div>
+            <p class="eyebrow">Web POC</p>
+            <h2 id="pageTitle">대시보드</h2>
+          </div>
+          <button class="primary-action" data-jump="analysis">영상 분석하기</button>
+        </section>
+
+        <section class="view active" id="dashboard">
+          <div class="hero">
+            <div>
+              <p class="eyebrow">보행/증상 영상 기반 건강 신호 분석</p>
+              <h3>아픈지 말하지 못하는 반려견의 작은 변화를 기록하고 확인하세요.</h3>
+              <p>
+                이 POC는 반려견 프로필, 보호자 메모, 증상 체크, 영상 정보를 바탕으로
+                이상 신호와 병원 상담 필요도를 안내합니다.
+              </p>
+              <div class="hero-actions">
+                <button class="primary-action" data-jump="profile">프로필 등록</button>
+                <button class="secondary-action" data-jump="analysis">영상 업로드</button>
+              </div>
+            </div>
+            <div class="status-card">
+              <p class="eyebrow">최근 분석</p>
+              <h4 id="latestRisk">아직 분석 없음</h4>
+              <p id="latestSummary">반려견 프로필을 등록하고 첫 영상을 분석해보세요.</p>
+            </div>
+          </div>
+
+          <div class="grid two">
+            <article class="card">
+              <h3>POC 핵심 흐름</h3>
+              <ol class="flow-list">
+                <li>반려견 프로필 등록</li>
+                <li>보행/증상 영상 업로드</li>
+                <li>보호자 메모와 증상 체크</li>
+                <li>AI 이상 신호 분석 결과 확인</li>
+              </ol>
+            </article>
+            <article class="card warning">
+              <h3>의료 안전 원칙</h3>
+              <p>
+                본 서비스는 질병을 확정 진단하지 않습니다. 영상과 기록에서 확인되는
+                이상 신호를 보호자에게 안내하고, 필요 시 수의사 상담을 권장합니다.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="profile">
+          <form class="card form" id="dogForm">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Dog profile</p>
+                <h3>반려견 정보</h3>
+              </div>
+              <span class="save-state" id="profileState">저장 전</span>
+            </div>
+
+            <div class="form-grid">
+              <label>
+                이름
+                <input id="dogName" name="dogName" placeholder="예: 보리" required />
+              </label>
+              <label>
+                품종
+                <input id="breed" name="breed" placeholder="예: 비숑프리제" required />
+              </label>
+              <label>
+                나이
+                <input id="age" name="age" type="number" min="0" max="30" placeholder="5" required />
+              </label>
+              <label>
+                체중 kg
+                <input
+                  id="weight"
+                  name="weight"
+                  type="number"
+                  min="0.5"
+                  max="100"
+                  step="0.1"
+                  placeholder="5.2"
+                  required
+                />
+              </label>
+              <label>
+                성별
+                <select id="sex" name="sex">
+                  <option value="unknown">선택 안 함</option>
+                  <option value="female">여아</option>
+                  <option value="male">남아</option>
+                </select>
+              </label>
+              <label>
+                중성화
+                <select id="neutered" name="neutered">
+                  <option value="unknown">선택 안 함</option>
+                  <option value="yes">예</option>
+                  <option value="no">아니오</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              알러지 / 기존 질환 / 복용 약
+              <textarea
+                id="medicalNotes"
+                name="medicalNotes"
+                rows="4"
+                placeholder="예: 닭고기 알러지, 슬개골 약함, 관절 영양제 복용"
+              ></textarea>
+            </label>
+
+            <button class="primary-action" type="submit">프로필 저장</button>
+          </form>
+        </section>
+
+        <section class="view" id="analysis">
+          <div class="grid two analysis-layout">
+            <form class="card form" id="analysisForm">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Video analysis</p>
+                  <h3>영상 업로드</h3>
+                </div>
+                <span class="save-state">10 credits</span>
+              </div>
+
+              <label>
+                영상 유형
+                <select id="videoType" name="videoType">
+                  <option value="gait">보행 영상</option>
+                  <option value="symptom">증상 영상</option>
+                  <option value="recovery">회복 경과 영상</option>
+                </select>
+              </label>
+
+              <label class="upload-box" for="videoFile">
+                <input id="videoFile" name="videoFile" type="file" accept="video/*" />
+                <span>영상을 선택하거나 촬영 파일을 업로드하세요</span>
+                <small>권장 길이: 10~60초</small>
+              </label>
+
+              <div class="symptom-grid" aria-label="증상 체크">
+                <label><input type="checkbox" name="symptom" value="limping" /> 절뚝거림</label>
+                <label><input type="checkbox" name="symptom" value="coughing" /> 기침/켁켁거림</label>
+                <label><input type="checkbox" name="symptom" value="low_energy" /> 무기력</label>
+                <label><input type="checkbox" name="symptom" value="vomiting" /> 구토</label>
+                <label><input type="checkbox" name="symptom" value="diarrhea" /> 설사</label>
+                <label><input type="checkbox" name="symptom" value="pain" /> 통증 반응</label>
+              </div>
+
+              <label>
+                보호자 메모
+                <textarea
+                  id="ownerNote"
+                  name="ownerNote"
+                  rows="5"
+                  placeholder="예: 산책 중 오른쪽 뒷다리를 살짝 들었고 계단 내려갈 때 망설였어요."
+                ></textarea>
+              </label>
+
+              <button class="primary-action" type="submit">이상 신호 분석 시작</button>
+            </form>
+
+            <article class="card result-card" id="resultCard">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Analysis result</p>
+                  <h3>분석 결과</h3>
+                </div>
+                <span class="risk-badge idle" id="riskBadge">대기</span>
+              </div>
+
+              <div class="video-preview" id="videoPreview">
+                <p>선택한 영상 미리보기가 여기에 표시됩니다.</p>
+              </div>
+
+              <div id="analysisOutput" class="analysis-output">
+                <p>영상과 메모를 입력한 뒤 분석을 시작하세요.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="history">
+          <article class="card">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">History</p>
+                <h3>분석 이력</h3>
+              </div>
+              <button class="secondary-action small" id="clearHistory">이력 지우기</button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+          </article>
+        </section>
+
+        <section class="view" id="settings">
+          <div class="grid two">
+            <article class="card">
+              <p class="eyebrow">Subscription POC</p>
+              <h3>요금제</h3>
+              <div class="plans" id="plans"></div>
+            </article>
+            <article class="card form">
+              <p class="eyebrow">Coupon</p>
+              <h3>쿠폰 등록</h3>
+              <label>
+                쿠폰 코드
+                <input id="couponCode" placeholder="WELCOME3000" />
+              </label>
+              <button class="primary-action" id="redeemCoupon" type="button">쿠폰 적용</button>
+              <p class="hint" id="couponMessage">
+                `WELCOME3000` 입력 시 Basic 1개월 무료 크레딧을 지급합니다.
+              </p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+# OS
+Thumbs.db
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+.claude/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Node / build artifacts for future expansion
+node_modules/
+dist/
+build/
+.next/
+.vercel/
+
+# Python worker artifacts for future expansion
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Rust API artifacts for future expansion
+target/
