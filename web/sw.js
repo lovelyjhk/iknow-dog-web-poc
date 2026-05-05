@@ -1,4 +1,4 @@
-const CACHE_NAME = "iknow-dog-web-poc-v8";
+const CACHE_NAME = "iknow-dog-web-poc-v10";
 const ASSETS = [
   "./",
   "./index.html",
@@ -7,6 +7,13 @@ const ASSETS = [
   "./terms.html",
   "./styles.css",
   "./app.js",
+  "./triage-model.js",
+  "./1.png",
+  "./2.png",
+  "./3.png",
+  "./assets/illustrations/onboarding-dog-jump.svg",
+  "./assets/illustrations/login-petting.svg",
+  "./assets/illustrations/signup-doggie.svg",
   "./sample-nutrition-label.svg",
   "./manifest.webmanifest",
   "./icon.svg",

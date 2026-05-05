@@ -1,5 +1,5 @@
-const STORAGE_KEY = "iknow-web-poc-state-v4";
-const LEGACY_KEYS = ["iknow-web-poc-state-v3", "iknow-web-poc-state-v2", "iknow-web-poc-state"];
+const STORAGE_KEY = "iknow-web-poc-state-v5";
+const LEGACY_KEYS = ["iknow-web-poc-state-v4", "iknow-web-poc-state-v3", "iknow-web-poc-state-v2", "iknow-web-poc-state"];
 const POC_APP_URL = "https://lovelyjhk.github.io/iknow-dog-web-poc/";
 const SAMPLE_VIDEO_URL = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
 const SAMPLE_NUTRITION_LABEL_URL = "./sample-nutrition-label.svg";
@@ -191,6 +191,7 @@ const defaultState = {
   dog: null,
   healthLogs: [],
   analyses: [],
+  triageAssessments: [],
   communityPosts: [],
   emailVerification: null,
   timeCoupon: null,
@@ -206,6 +207,7 @@ function createDefaultState() {
     dog: null,
     healthLogs: [],
     analyses: [],
+    triageAssessments: [],
     communityPosts: [],
     emailVerification: null,
     timeCoupon: null,
@@ -222,6 +224,8 @@ let selectedVideoUrl = null;
 let selectedVideoMode = null;
 let selectedNutritionImage = null;
 let selectedNutritionImageDataUrl = null;
+let selectedTriageImageName = "";
+let selectedTriageImageDataUrl = null;
 let deferredInstallPrompt = null;
 
 const $ = (selector) => document.querySelector(selector);
@@ -340,6 +344,7 @@ function loadState() {
       : plans[next.plan].credits;
     next.healthLogs = Array.isArray(next.healthLogs) ? next.healthLogs : [];
     next.analyses = Array.isArray(next.analyses) ? next.analyses : [];
+    next.triageAssessments = Array.isArray(next.triageAssessments) ? next.triageAssessments : [];
     next.communityPosts = Array.isArray(next.communityPosts) ? next.communityPosts : [];
     next.emailVerification = next.emailVerification || null;
     next.timeCoupon = next.timeCoupon || null;
@@ -371,7 +376,7 @@ function saveState() {
   renderState();
 }
 
-function switchView(viewId) {
+function switchView(viewId, updateHash = true) {
   $$(".view").forEach((view) => {
     view.classList.toggle("active", view.id === viewId);
   });
@@ -386,14 +391,25 @@ function switchView(viewId) {
 
   const activeButton = $(`.nav-item[data-view="${viewId}"]`) || $(`.bottom-item[data-view="${viewId}"]`);
   $("#pageTitle").textContent = activeButton ? activeButton.textContent.trim() : "홈";
+  if (updateHash && window.location.hash !== `#${viewId}`) {
+    history.replaceState(null, "", `#${viewId}`);
+  }
 
   if (viewId === "report") renderVetReport();
   const main = $(".main");
+  const behavior = updateHash ? "smooth" : "auto";
   if (main) {
-    main.scrollTo({ top: 0, behavior: "smooth" });
+    main.scrollTo({ top: 0, behavior });
   } else {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior });
   }
+}
+
+function getViewFromHash() {
+  const viewId = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+  if (!viewId) return "";
+  const view = document.getElementById(viewId);
+  return view?.classList.contains("view") ? viewId : "";
 }
 
 function setAuthMessage(message, type = "info") {
@@ -577,6 +593,7 @@ function renderState() {
   }
 
   renderLatest();
+  renderTriageHistory();
   renderHealthLogs();
   renderHistory();
   renderCommunity();
@@ -588,6 +605,7 @@ function renderState() {
 
 function renderLatest() {
   const latestAnalysis = state.analyses[0];
+  const latestTriage = state.triageAssessments[0];
   const latestLog = state.healthLogs[0];
   const dog = state.dog;
 
@@ -601,6 +619,12 @@ function renderLatest() {
   if (latestAnalysis) {
     $("#latestRisk").textContent = riskLabels[latestAnalysis.riskLevel];
     $("#latestSummary").textContent = latestAnalysis.summary;
+    return;
+  }
+
+  if (latestTriage) {
+    $("#latestRisk").textContent = riskLabels[latestTriage.riskLevel];
+    $("#latestSummary").textContent = latestTriage.summary;
     return;
   }
 
@@ -640,6 +664,124 @@ function renderHealthLogs() {
         </article>
       `;
     })
+    .join("");
+}
+
+function renderTriageQuestions() {
+  const model = window.NAAPA_TRIAGE_MODEL;
+  const container = $("#triageQuestions");
+  if (!container || !model) return;
+
+  const count = $("#triageQuestionCount");
+  if (count) count.textContent = `${model.questions.length} signals`;
+
+  container.innerHTML = model.questionGroups
+    .map(
+      (group, index) => `
+        <details class="triage-group" ${index < 2 ? "open" : ""}>
+          <summary>${escapeHtml(group.label)} <span>${group.questions.length}개</span></summary>
+          <div class="triage-check-grid">
+            ${group.questions
+              .map(
+                ([id, label]) => `
+                  <label>
+                    <input type="checkbox" name="triageSignal" value="${escapeHtml(id)}" />
+                    <span>${escapeHtml(label)}</span>
+                  </label>
+                `,
+              )
+              .join("")}
+          </div>
+        </details>
+      `,
+    )
+    .join("");
+}
+
+function collectTriageSignals() {
+  return $$('input[name="triageSignal"]:checked').map((input) => input.value);
+}
+
+function createTriageSummary(result) {
+  const top = result.topConditions?.[0]?.label || "고위험 후보 없음";
+  if (result.riskLevel === "EMERGENCY") {
+    return `문진 결과 ${riskLabels[result.riskLevel]}입니다. 최우선 후보는 ${top}이며 즉시 병원 연락이 필요합니다.`;
+  }
+  if (result.riskLevel === "VET_RECOMMENDED") {
+    return `문진 결과 ${riskLabels[result.riskLevel]}입니다. ${top} 가능성을 우선 배제해야 합니다.`;
+  }
+  if (result.riskLevel === "CAUTION") {
+    return `문진 결과 ${riskLabels[result.riskLevel]}입니다. ${top} 관련 신호를 관찰하고 반복 시 상담을 권장합니다.`;
+  }
+  if (result.riskLevel === "WATCH") {
+    return `문진 결과 ${riskLabels[result.riskLevel]}입니다. 현재는 관찰 기록을 이어가세요.`;
+  }
+  return "문진상 즉시 응급으로 보이는 신호는 낮습니다. 변화가 생기면 다시 문진하세요.";
+}
+
+function renderTriageResult(result) {
+  const badge = $("#triageRiskBadge");
+  if (badge) {
+    badge.className = `risk-badge ${result.riskLevel}`;
+    badge.textContent = riskLabels[result.riskLevel];
+  }
+
+  $("#triageOutput").innerHTML = `
+    <h4>${escapeHtml(result.summary)}</h4>
+    <div class="model-panel">
+      <p><strong>문진 모델</strong> ${escapeHtml(result.modelVersion)} · ${result.selectedCount}/${result.questionCount}개 신호 선택 · 응급 점수 ${result.emergencyScore}</p>
+      <p class="hint">${escapeHtml(result.confidence)} · 가능도는 학습 검증 전 참고 점수이며 확정 진단이 아닙니다.</p>
+    </div>
+    ${
+      result.redFlags.length
+        ? `<p><strong>즉시 확인할 위험 신호</strong></p><ul>${result.redFlags.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+        : ""
+    }
+    <p><strong>상위 감별질환 후보</strong></p>
+    <div class="condition-list">
+      ${result.topConditions
+        .map(
+          (item) => `
+            <div>
+              <strong>${escapeHtml(item.label)}</strong>
+              <span>모델점수 ${escapeHtml(item.score)} · 상대 가능도 ${escapeHtml(item.likelihood)}%</span>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+    <p><strong>모델 근거</strong></p>
+    <ul>${result.evidence.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    <p><strong>권장 행동</strong></p>
+    <ul>${result.recommendations.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    ${result.imageName ? `<p class="hint">첨부 이미지: ${escapeHtml(result.imageName)}. 현재 문진 모델은 이미지를 판독하지 않고 병원 전달용으로만 기록합니다.</p>` : ""}
+    <p class="hint">${escapeHtml(result.disclaimer)}</p>
+  `;
+}
+
+function renderTriageHistory() {
+  const list = $("#triageHistoryList");
+  if (!list) return;
+
+  if (!state.triageAssessments.length) {
+    list.innerHTML = '<p class="hint">아직 저장된 문진 결과가 없습니다.</p>';
+    return;
+  }
+
+  list.innerHTML = state.triageAssessments
+    .slice(0, 5)
+    .map(
+      (item) => `
+        <article class="history-item">
+          <header>
+            <strong>${escapeHtml(riskLabels[item.riskLevel])}</strong>
+            <span>${escapeHtml(formatDate(item.createdAt))}</span>
+          </header>
+          <p>${escapeHtml(item.summary)}</p>
+          <small>${escapeHtml(item.topConditions?.[0]?.label || "후보 없음")} · ${escapeHtml(item.selectedCount)}개 신호</small>
+        </article>
+      `,
+    )
     .join("");
 }
 
@@ -812,6 +954,7 @@ function renderVetReport() {
   const report = $("#vetReport");
   const dog = state.dog;
   const latestAnalysis = state.analyses[0];
+  const latestTriage = state.triageAssessments[0];
   const recentLogs = state.healthLogs.slice(0, 5);
 
   if (!dog) {
@@ -834,6 +977,16 @@ function renderVetReport() {
   const recentLogLines = recentLogs.length
     ? recentLogs.map((log) => `- ${formatDate(log.createdAt)} | ${riskLabels[log.riskLevel]} | ${log.summary}`)
     : ["- 기록 없음"];
+  const latestTriageLines = latestTriage
+    ? [
+        `위험도: ${riskLabels[latestTriage.riskLevel]}`,
+        `요약: ${latestTriage.summary}`,
+        `응급 점수: ${latestTriage.emergencyScore}`,
+        `상위 후보: ${latestTriage.topConditions.map((item) => `${item.label}(${item.likelihood}%)`).join(", ")}`,
+        `위험 신호: ${latestTriage.redFlags.length ? latestTriage.redFlags.join(" / ") : "-"}`,
+        `첨부 이미지: ${latestTriage.imageName || "-"}`,
+      ]
+    : ["문진 결과 없음"];
 
   const lines = [
     "나아파 - 병원 상담 전 리포트",
@@ -848,6 +1001,9 @@ function renderVetReport() {
     "",
     "[최근 건강기록]",
     ...recentLogLines,
+    "",
+    "[최근 문진 응급분류]",
+    ...latestTriageLines,
     "",
     "[최근 영상 분석]",
     ...latestAnalysisLines,
@@ -1011,6 +1167,32 @@ function createHealthLog() {
     symptoms,
     memo,
     summary: memo ? `${summary} 메모: ${memo}` : summary,
+  };
+}
+
+function createTriageAssessment() {
+  const model = window.NAAPA_TRIAGE_MODEL;
+  if (!model) throw new Error("문진 모델을 불러오지 못했습니다.");
+
+  const raw = model.assess({
+    selectedIds: collectTriageSignals(),
+    dog: state.dog,
+    chiefComplaint: $("#triageChiefComplaint").value,
+    duration: $("#triageDuration").value,
+    notes: $("#triageNotes").value.trim(),
+    hasImage: Boolean(selectedTriageImageDataUrl),
+  });
+
+  return {
+    ...raw,
+    id: makeId(),
+    userId: state.currentUser?.id || null,
+    createdAt: new Date().toISOString(),
+    chiefComplaint: $("#triageChiefComplaint").value,
+    duration: $("#triageDuration").value,
+    notes: $("#triageNotes").value.trim(),
+    imageName: selectedTriageImageName,
+    summary: createTriageSummary(raw),
   };
 }
 
@@ -1561,6 +1743,13 @@ function showNutritionPreview(dataUrl) {
   $("#nutritionPreview").innerHTML = `<img src="${escapeHtml(dataUrl)}" alt="성분표 미리보기" />`;
 }
 
+function showTriageImagePreview(dataUrl, name) {
+  $("#triageImagePreview").innerHTML = `
+    <img src="${escapeHtml(dataUrl)}" alt="${escapeHtml(name || "문진 첨부 이미지")}" />
+    <p class="hint">${escapeHtml(name || "첨부 이미지")}</p>
+  `;
+}
+
 function normalizeNutritionResult(raw) {
   const riskLevel = normalizeRiskLevel(raw.riskLevel || raw.risk_level || raw.risk);
   return {
@@ -1730,8 +1919,12 @@ function resetLocalData() {
   selectedVideoMode = null;
   selectedNutritionImage = null;
   selectedNutritionImageDataUrl = null;
+  selectedTriageImageName = "";
+  selectedTriageImageDataUrl = null;
   $("#videoPreview").innerHTML = "<p>선택한 영상 미리보기가 여기에 표시됩니다.</p>";
   $("#analysisOutput").innerHTML = "<p>영상과 메모를 입력한 뒤 분석을 시작하세요.</p>";
+  $("#triageImagePreview").innerHTML = "<p>첨부한 이미지 미리보기가 표시됩니다.</p>";
+  $("#triageOutput").innerHTML = "<p>문진표를 체크하면 응급도, 주요 근거, 감별질환 후보, 병원 전달 문구를 생성합니다.</p>";
   $("#nutritionPreview").innerHTML = "<p>선택한 성분표 사진 미리보기가 표시됩니다.</p>";
   $("#nutritionOutput").innerHTML = "<p>사진을 올리면 단백질/지방/나트륨/첨가물/알레르기 관점에서 위험 신호를 확인합니다.</p>";
   $("#riskBadge").className = "risk-badge idle";
@@ -1847,6 +2040,57 @@ function bindEvents() {
   $("#clearHealthLogs").addEventListener("click", () => {
     state.healthLogs = [];
     saveState();
+  });
+
+  $("#triageImage").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    selectedTriageImageName = file.name;
+    $("#triageImagePreview").innerHTML = "<p>이미지를 불러오는 중입니다...</p>";
+    try {
+      selectedTriageImageDataUrl = await resizeImageFile(file, 1100);
+      showTriageImagePreview(selectedTriageImageDataUrl, file.name);
+    } catch (error) {
+      selectedTriageImageName = "";
+      selectedTriageImageDataUrl = null;
+      $("#triageImagePreview").innerHTML = `<p class="error-text">${escapeHtml(error.message)}</p>`;
+    }
+  });
+
+  $("#triageForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!requireAuth("문진표 결과를 저장하려면 먼저 로그인하거나 계정을 만드세요.")) {
+      return;
+    }
+
+    if (!state.dog) {
+      alert("먼저 반려견 프로필을 저장하세요.");
+      switchView("profile");
+      return;
+    }
+
+    const result = createTriageAssessment();
+    state.triageAssessments = [result, ...state.triageAssessments].slice(0, 30);
+    saveState();
+    renderTriageResult(result);
+    $("#triageRiskBadge").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  $("#clearTriageForm").addEventListener("click", () => {
+    $$('input[name="triageSignal"]').forEach((input) => {
+      input.checked = false;
+    });
+    $("#triageNotes").value = "";
+    $("#triageChiefComplaint").value = "unknown";
+    $("#triageDuration").value = "minutes";
+    $("#triageImage").value = "";
+    selectedTriageImageName = "";
+    selectedTriageImageDataUrl = null;
+    $("#triageImagePreview").innerHTML = "<p>첨부한 이미지 미리보기가 표시됩니다.</p>";
+    $("#triageRiskBadge").className = "risk-badge idle";
+    $("#triageRiskBadge").textContent = "대기";
+    $("#triageOutput").innerHTML = "<p>문진표를 체크하면 응급도, 주요 근거, 감별질환 후보, 병원 전달 문구를 생성합니다.</p>";
   });
 
   $("#videoFile").addEventListener("change", (event) => {
@@ -2154,7 +2398,19 @@ function registerPwa() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  renderTriageQuestions();
   bindEvents();
   renderState();
+  const initialView = getViewFromHash();
+  if (initialView) switchView(initialView, false);
+  requestAnimationFrame(() => {
+    const main = $(".main");
+    if (main) main.scrollTo({ top: 0, behavior: "auto" });
+    window.scrollTo({ top: 0, behavior: "auto" });
+  });
+  window.addEventListener("hashchange", () => {
+    const viewId = getViewFromHash();
+    if (viewId) switchView(viewId, false);
+  });
   registerPwa();
 });

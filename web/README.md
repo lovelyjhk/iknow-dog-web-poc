@@ -1,6 +1,6 @@
 # 나아파 Web POC
 
-반려견 건강기록, 보행/증상 영상, 음식 안전, 병원 상담 리포트를 연결하는 모바일 우선 정적 PWA 웹앱 POC입니다.
+반려견 건강기록, 100개 문진표 응급 분류, 보행/증상 영상, 음식 안전, 병원 상담 리포트를 연결하는 모바일 우선 정적 PWA 웹앱 POC입니다.
 
 ## 실행
 
@@ -15,6 +15,8 @@ Start-Process "C:\Users\lovel\pet\web\index.html"
 ## 배포
 
 정적 파일 배포 서비스에 `web` 폴더를 그대로 올립니다.
+
+AI Worker는 별도 Cloudflare Worker로 배포합니다. `api/ai-worker/wrangler.toml.example`을 복사하고 `npx wrangler deploy`를 실행하면 새 Worker URL이 생성됩니다. 생성된 URL은 앱의 `설정 > 실제 AI 서버 연결`에 저장합니다.
 
 ### GitHub Pages
 
@@ -42,6 +44,9 @@ netlify deploy --dir=web --prod
 ## POC 범위
 
 - 반려견 프로필 저장
+- 모바일 온보딩/로그인/회원가입 UI
+- 100개 문진표 기반 응급 triage 모델
+- 응급도, 위험 신호, 상위 감별질환 후보, 병원 전달 문구 생성
 - 매일 건강 체크 기록
 - 보행/증상 영상 선택, MP4/WebM URL 재생, YouTube/Shorts 썸네일 미리보기
 - 증상 체크 + 보호자 메모

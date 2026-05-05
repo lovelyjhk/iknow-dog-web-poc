@@ -1,6 +1,6 @@
 # 나아파 Web POC
 
-반려견 보행/증상 영상을 업로드하고, 이상 신호와 병원 상담 필요도를 안내하는 웹앱 POC입니다.
+반려견 보행/증상 영상, 100개 문진 신호, 사료/간식 성분표를 기반으로 이상 신호와 병원 상담 필요도를 안내하는 모바일 우선 웹앱 POC입니다.
 
 현재 구현은 `web/` 폴더의 정적 PWA 웹앱입니다. Node/npm 없이 브라우저에서 바로 열 수 있고, GitHub Pages, Cloudflare Pages, Netlify에 그대로 배포할 수 있습니다.
 
@@ -25,6 +25,32 @@ Start-Process "C:\Users\lovel\pet\web\index.html"
 - 성분표 검증: 앱의 `음식안전 > 샘플` 버튼으로 샘플 이미지를 불러오거나 위 샘플 URL을 내려받아 직접 업로드할 수 있습니다.
 - 메일 쿠폰: 베타 POC에서는 메일 미리보기 방식으로 6자리 코드를 발급하고, 인증 후 AI 분석 5회를 제공합니다.
 
+## 새 Worker URL 만들기
+
+```powershell
+cd C:\Users\lovel\pet\api\ai-worker
+Copy-Item wrangler.toml.example wrangler.toml
+npx wrangler login
+npx wrangler kv namespace create AI_CONFIG
+# 출력된 id를 wrangler.toml의 [[kv_namespaces]].id에 넣기
+npx wrangler secret put ADMIN_PASSWORD
+npx wrangler secret put CONFIG_ENCRYPTION_KEY
+npx wrangler deploy
+```
+
+배포가 끝나면 `https://iknow-dog-ai-worker.<계정>.workers.dev` 형식의 Worker URL이 출력됩니다. 이 URL을 앱의 `설정 > 실제 AI 서버 연결`에 저장합니다. OpenAI API key는 `admin.html`에서 Worker로 전송해 KV에 암호화 저장하고, GitHub Pages나 브라우저 localStorage에는 저장하지 않습니다.
+
+## 현재 GitHub 배포 정보
+
+- Repository: `https://github.com/lovelyjhk/iknow-dog-web-poc`
+- GitHub Pages: `https://lovelyjhk.github.io/iknow-dog-web-poc/`
+- Pages API: `https://api.github.com/repos/lovelyjhk/iknow-dog-web-poc/pages`
+- 배포 방식: GitHub Actions workflow `.github/workflows/deploy-web.yml`
+- 사용 액션: `actions/configure-pages@v5`, `actions/upload-pages-artifact@v3`, `actions/deploy-pages@v4`
+- 로컬 GitHub CLI 계정: `lovelyjhk`
+
+GitHub token/API token 값은 비밀값이므로 앱 코드, README, 브라우저 저장소에 넣지 않습니다.
+
 ## 로그인/회원가입
 
 웹 POC에는 이메일/비밀번호 기반 로컬 계정과 Google/Kakao/Naver 데모 로그인 버튼이 들어 있습니다. 분석, 건강기록, 프로필 저장, 쿠폰 사용은 로그인 후 실행됩니다.
@@ -48,6 +74,9 @@ npx wrangler deploy
 - 반려견 프로필 저장
 - 로그인/회원가입, 소셜 로그인 데모, 보호된 분석/기록 흐름
 - 매일 건강 체크 기록
+- 모바일 온보딩/로그인/회원가입 UI
+- 100개 문진표 기반 응급 triage 모델
+- 응급도, 위험 신호, 상위 감별질환 후보, 병원 전달 문구 생성
 - 보행/증상 영상 선택, MP4/WebM URL 재생, YouTube/Shorts 썸네일 미리보기
 - 증상 체크와 보호자 메모 입력
 - 이상 신호 분석 결과 생성
