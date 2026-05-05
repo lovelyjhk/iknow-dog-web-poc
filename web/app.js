@@ -1,6 +1,28 @@
 const STORAGE_KEY = "iknow-web-poc-state-v3";
 const LEGACY_KEYS = ["iknow-web-poc-state-v2", "iknow-web-poc-state"];
+const POC_APP_URL = "https://lovelyjhk.github.io/iknow-dog-web-poc/";
 const SAMPLE_VIDEO_URL = "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+const SAMPLE_NUTRITION_LABEL_URL = "./sample-nutrition-label.svg";
+const AI_ENDPOINT_HINT = "설정 > 실제 AI 서버 연결에서 Worker URL을 저장하면 LLM 분석을 실행할 수 있습니다.";
+const SAMPLE_DATASET_PROFILE = {
+  name: "AIHub 71878 샘플",
+  frames: 1023,
+  labels: 1023,
+  avgKeypoints: 10.4,
+  minKeypoints: 4,
+  maxKeypoints: 13,
+  hospitals: ["잠실동물병원", "SNC동물병원", "치료멍멍동물병원"],
+  views: ["Front", "Back", "Left", "Right"],
+  topKeypoints: [
+    "Ear",
+    "Ulnar styloid process",
+    "Lateral humeral epicondyle",
+    "Distal lateral aspect of fifth metacarpal bone",
+    "Femoral greater trochanter",
+    "Femorotibial joint",
+    "Lateral malleolus of the distal tibia",
+  ],
+};
 
 const plans = {
   free: {
@@ -170,6 +192,9 @@ const defaultState = {
   healthLogs: [],
   analyses: [],
   communityPosts: [],
+  emailVerification: null,
+  timeCoupon: null,
+  aiEndpoint: "",
   redeemedCoupons: [],
 };
 
@@ -178,6 +203,8 @@ let selectedVideo = null;
 let selectedVideoMeta = null;
 let selectedVideoUrl = null;
 let selectedVideoMode = null;
+let selectedNutritionImage = null;
+let selectedNutritionImageDataUrl = null;
 let deferredInstallPrompt = null;
 
 const $ = (selector) => document.querySelector(selector);
@@ -249,6 +276,9 @@ function loadState() {
     next.healthLogs = Array.isArray(next.healthLogs) ? next.healthLogs : [];
     next.analyses = Array.isArray(next.analyses) ? next.analyses : [];
     next.communityPosts = Array.isArray(next.communityPosts) ? next.communityPosts : [];
+    next.emailVerification = next.emailVerification || null;
+    next.timeCoupon = next.timeCoupon || null;
+    next.aiEndpoint = typeof next.aiEndpoint === "string" ? next.aiEndpoint : "";
     next.redeemedCoupons = Array.isArray(next.redeemedCoupons) ? next.redeemedCoupons : [];
 
     return next;
@@ -308,6 +338,8 @@ function renderState() {
   renderHealthLogs();
   renderHistory();
   renderCommunity();
+  renderTimeCoupon();
+  renderAiEndpoint();
   renderPlans();
   renderVetReport();
 }
@@ -418,6 +450,63 @@ function renderCommunity() {
     .join("");
 }
 
+function isTimeCouponValid() {
+  if (!state.timeCoupon) return false;
+  return state.timeCoupon.usesRemaining > 0 && new Date(state.timeCoupon.expiresAt).getTime() > Date.now();
+}
+
+function renderTimeCoupon() {
+  const status = $("#timeCouponStatus");
+  if (!status) return;
+
+  if (isTimeCouponValid()) {
+    status.textContent = `메일 인증 쿠폰 활성화: ${state.timeCoupon.usesRemaining}회 남음 · ${formatDate(
+      state.timeCoupon.expiresAt,
+    )}까지`;
+    return;
+  }
+
+  if (state.timeCoupon?.usesRemaining === 0) {
+    status.textContent = "메일 인증 쿠폰 5회를 모두 사용했습니다. 기본 크레딧으로 계속 이용할 수 있습니다.";
+    return;
+  }
+
+  status.textContent = "메일 인증 후 48시간 동안 영상/성분표 AI 분석 5회를 사용할 수 있습니다.";
+}
+
+function renderAiEndpoint() {
+  const input = $("#aiEndpoint");
+  const status = $("#aiEndpointStatus");
+  if (!input || !status) return;
+
+  input.value = state.aiEndpoint || "";
+  status.textContent = state.aiEndpoint
+    ? `연결 대상: ${state.aiEndpoint}`
+    : "실제 LLM 분석은 서버 측 Worker URL이 연결되어야 실행됩니다.";
+}
+
+function getAiEndpoint() {
+  return String(state.aiEndpoint || "").trim().replace(/\/+$/, "");
+}
+
+function generateCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function hasAnalysisAccess(cost = 10) {
+  return isTimeCouponValid() || state.creditsRemaining >= cost;
+}
+
+function consumeAnalysisAccess(cost = 10) {
+  if (isTimeCouponValid()) {
+    state.timeCoupon.usesRemaining = Math.max(0, state.timeCoupon.usesRemaining - 1);
+    return "timeCoupon";
+  }
+
+  state.creditsRemaining = Math.max(0, state.creditsRemaining - cost);
+  return "credits";
+}
+
 function renderPlans() {
   const plansEl = $("#plans");
 
@@ -455,6 +544,8 @@ function renderVetReport() {
     ? [
         `위험도: ${riskLabels[latestAnalysis.riskLevel]}`,
         `요약: ${latestAnalysis.summary}`,
+        `강아지 관점 메시지: ${latestAnalysis.dogMessage || "-"}`,
+        `AI 모델 요약: ${latestAnalysis.modelSummary || "-"}`,
         `관찰 신호: ${latestAnalysis.observedSignals.join(", ")}`,
         `권장 행동: ${latestAnalysis.recommendations.join(" / ")}`,
         `수의사 상담 권장: ${latestAnalysis.vetConsultationRecommended ? "예" : "현재는 관찰 우선"}`,
@@ -496,6 +587,96 @@ function collectSymptoms(name) {
 
 function getSelectLabel(group, value) {
   return selectLabels[group]?.[value] || value || "-";
+}
+
+function createDogMessage(riskLevel, signals, dogName) {
+  const hasGaitConcern = signals.some((item) => item.includes("보행") || item.includes("통증"));
+  const hasBreathingConcern = signals.some((item) => item.includes("호흡"));
+  const hasDigestiveConcern = signals.some((item) => item.includes("소화"));
+
+  if (riskLevel === "VET_RECOMMENDED") {
+    return hasBreathingConcern
+      ? `${dogName} 입장에서는 "숨 쉬는 게 평소 같지 않아서 무섭고 힘들어요. 빨리 봐주세요."라고 말하고 싶을 수 있습니다.`
+      : `${dogName} 입장에서는 "참아보려고 했는데 계속 불편해요. 오늘은 병원에 같이 가줬으면 해요."라고 말하고 싶을 수 있습니다.`;
+  }
+
+  if (riskLevel === "CAUTION") {
+    return hasGaitConcern
+      ? `${dogName} 입장에서는 "걷기는 할 수 있지만 한쪽 다리를 쓰는 게 조금 불편해요. 천천히 쉬면서 봐주세요."라고 말하고 싶을 수 있습니다.`
+      : `${dogName} 입장에서는 "몸이 평소 같지 않아요. 오늘은 무리하지 않고 가까이 있어주세요."라고 말하고 싶을 수 있습니다.`;
+  }
+
+  if (riskLevel === "WATCH") {
+    if (hasDigestiveConcern) {
+      return `${dogName} 입장에서는 "속이 조금 불편해요. 오늘 먹은 것과 배변을 잘 봐주세요."라고 말하고 싶을 수 있습니다.`;
+    }
+    return `${dogName} 입장에서는 "조금 이상하긴 한데 아직은 견딜 만해요. 내일도 같은지 지켜봐주세요."라고 말하고 싶을 수 있습니다.`;
+  }
+
+  return `${dogName} 입장에서는 "오늘은 크게 불편한 신호는 없어요. 그래도 평소처럼 봐주고 기록해줘서 좋아요."라고 말하고 싶을 수 있습니다.`;
+}
+
+function createSampleModeling({ score, symptoms, videoType }) {
+  const sample = SAMPLE_DATASET_PROFILE;
+  const hasGaitSymptom = videoType === "gait" || symptoms.includes("limping") || symptoms.includes("pain");
+  const gaitSignalScore = Math.min(100, Math.max(8, Math.round(28 + score * 7 + (hasGaitSymptom ? 16 : 0))));
+  const sampleSimilarity = hasGaitSymptom ? "중간" : "낮음";
+  const keypointCoverage = `${sample.avgKeypoints}/13`;
+
+  return {
+    version: "sample-gait-v0.1",
+    sampleSummary: `${sample.frames.toLocaleString("ko-KR")}개 프레임과 ${sample.labels.toLocaleString(
+      "ko-KR",
+    )}개 라벨의 샘플 구조를 기준으로 보행 관찰 항목을 매핑했습니다.`,
+    keypointCoverage,
+    gaitSignalScore,
+    sampleSimilarity,
+    primaryFeatures: hasGaitSymptom
+      ? ["좌우 보행 균형", "앞/뒷다리 지지점", "관절 키포인트 누락/흔들림", "보폭 리듬"]
+      : ["영상/메모 기반 위험 신호", "최근 건강기록 연계", "보호자 체크리스트"],
+    limitation:
+      "샘플 리포트는 실제 LLM 호출이 아니라 AIHub 71878 샘플 데이터셋의 라벨 구조와 보행 관찰 항목을 설명합니다. 실제 분석은 AI Worker 연결 후 실행됩니다.",
+  };
+}
+
+function createSampleDatasetReport() {
+  const sample = SAMPLE_DATASET_PROFILE;
+  const dogName = state.dog?.name || "반려견";
+  return {
+    id: makeId(),
+    createdAt: new Date().toISOString(),
+    riskLevel: "WATCH",
+    summary: `${dogName} 분석에 활용할 기준 데이터는 ${sample.frames.toLocaleString(
+      "ko-KR",
+    )}개 프레임, ${sample.labels.toLocaleString("ko-KR")}개 라벨, 4방향 시점으로 구성됩니다.`,
+    dogMessage:
+      `${dogName} 입장에서는 "내 걸음이 평소와 다른지 보려면 앞, 뒤, 좌, 우에서 짧고 선명하게 찍어줘"라고 말하고 싶을 수 있습니다.`,
+    modelSummary:
+      "샘플 데이터셋은 관절 키포인트, 촬영 방향, 병원 라벨 구조를 갖고 있어 보행 균형/지지점/보폭 리듬 관찰 기준을 설계하는 데 사용할 수 있습니다.",
+    modelMetrics: createSampleModeling({
+      score: 3,
+      symptoms: collectSymptoms("symptom"),
+      videoType: $("#videoType").value,
+    }),
+    observedSignals: [
+      "샘플 구조 기준: Front/Back/Left/Right 4방향 촬영",
+      `평균 키포인트 ${sample.avgKeypoints}/13개`,
+      "실제 결과 생성을 위해서는 AI Worker와 LLM API 키 연결 필요",
+    ],
+    recommendations: [
+      "실제 POC에서는 10~60초 보행 영상을 올리고 AI Worker URL을 설정하세요.",
+      "촬영 시 몸 전체와 네 발이 프레임 안에 들어오게 유지하세요.",
+      "절뚝거림이나 통증 반응이 있으면 분석 결과와 별개로 수의사 상담을 우선하세요.",
+    ],
+    vetConsultationRecommended: false,
+    videoName: selectedVideo?.name || "샘플 데이터셋",
+    videoSource: "sample-dataset",
+    videoType: $("#videoType").value,
+    videoTypeLabel: $("#videoType").selectedOptions[0]?.textContent || "영상",
+    ownerNote: $("#ownerNote")?.value.trim() || "",
+    disclaimer:
+      "이 항목은 데이터셋 구조 설명입니다. 실제 이상 신호 분석은 LLM Worker 연결 후 업로드 프레임을 기반으로 실행됩니다.",
+  };
 }
 
 function createHealthLog() {
@@ -613,6 +794,7 @@ function createAnalysis({ symptoms, ownerNote, videoType }) {
     score >= 10 ? "VET_RECOMMENDED" : score >= 6 ? "CAUTION" : score >= 2 ? "WATCH" : "NORMAL";
 
   const dogName = dog.name || "반려견";
+  const modeling = createSampleModeling({ score, symptoms, videoType });
   const summaryByRisk = {
     NORMAL: `${dogName}의 입력 기록에서 뚜렷한 고위험 신호는 확인되지 않았습니다. 현재 상태를 계속 기록하세요.`,
     WATCH: `${dogName}에게 일부 관찰이 필요한 신호가 있습니다. 같은 증상이 반복되는지 24시간 정도 확인하세요.`,
@@ -633,6 +815,9 @@ function createAnalysis({ symptoms, ownerNote, videoType }) {
     createdAt: new Date().toISOString(),
     riskLevel,
     summary: summaryByRisk[riskLevel],
+    modelSummary: modeling.sampleSummary,
+    modelMetrics: modeling,
+    dogMessage: createDogMessage(riskLevel, signals, dogName),
     observedSignals: signals.length ? signals : ["특이 신호 없음"],
     recommendations,
     vetConsultationRecommended: ["CAUTION", "VET_RECOMMENDED", "EMERGENCY"].includes(riskLevel),
@@ -646,6 +831,66 @@ function createAnalysis({ symptoms, ownerNote, videoType }) {
   };
 }
 
+function normalizeRiskLevel(value) {
+  const level = String(value || "").toUpperCase();
+  return riskLabels[level] ? level : "WATCH";
+}
+
+function normalizeList(value, fallback = []) {
+  if (Array.isArray(value)) return value.map((item) => String(item)).filter(Boolean);
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return fallback;
+}
+
+function normalizeAiAnalysis(raw, context) {
+  const riskLevel = normalizeRiskLevel(raw.riskLevel || raw.risk_level || raw.risk);
+  const modelMetrics = raw.modelMetrics || raw.model_metrics || {};
+  const dogName = state.dog?.name || "반려견";
+
+  return {
+    id: makeId(),
+    createdAt: new Date().toISOString(),
+    riskLevel,
+    summary: String(raw.summary || `${dogName}의 영상에서 ${riskLabels[riskLevel]} 수준의 신호가 관찰되었습니다.`),
+    dogMessage: String(raw.dogMessage || raw.dog_message || createDogMessage(riskLevel, [], dogName)),
+    modelSummary: String(raw.modelSummary || raw.model_summary || "LLM이 영상 프레임, 보호자 메모, 반려견 프로필을 함께 검토했습니다."),
+    modelMetrics: {
+      modelProvider: modelMetrics.modelProvider || modelMetrics.model_provider || "LLM Worker",
+      frameCount: modelMetrics.frameCount ?? modelMetrics.frame_count ?? context.frames.length,
+      inputModality: modelMetrics.inputModality || modelMetrics.input_modality || "video_frames+text",
+      sampleSimilarity: modelMetrics.sampleSimilarity || modelMetrics.sample_similarity || "-",
+      gaitSignalScore: modelMetrics.gaitSignalScore ?? modelMetrics.gait_signal_score ?? "-",
+      keypointCoverage: modelMetrics.keypointCoverage || modelMetrics.keypoint_coverage || "-",
+      confidence: modelMetrics.confidence || "POC 참고",
+      limitation:
+        modelMetrics.limitation ||
+        modelMetrics.limitations ||
+        "단일 영상과 보호자 메모 기반의 1차 위험 신호 안내입니다. 질병 확정 판단은 하지 않습니다.",
+      primaryFeatures: normalizeList(modelMetrics.primaryFeatures || modelMetrics.primary_features, [
+        "영상 프레임",
+        "보호자 메모",
+        "반려견 프로필",
+      ]),
+    },
+    observedSignals: normalizeList(raw.observedSignals || raw.observed_signals, ["LLM 결과에 관찰 신호가 비어 있습니다."]),
+    recommendations: normalizeList(raw.recommendations || raw.recommendedActions || raw.recommended_actions, [
+      "24시간 내 반복 여부를 기록하세요.",
+      "통증, 호흡 이상, 반복 구토/설사가 있으면 동물병원 상담을 권장합니다.",
+    ]),
+    vetConsultationRecommended: Boolean(
+      raw.vetConsultationRecommended ?? raw.vet_consultation_recommended ?? riskOrder[riskLevel] >= riskOrder.CAUTION,
+    ),
+    videoName: selectedVideo?.name,
+    videoSource: selectedVideoMode || "file",
+    videoType: context.videoType,
+    videoTypeLabel: $("#videoType").selectedOptions[0]?.textContent || "영상",
+    ownerNote: context.ownerNote,
+    disclaimer:
+      raw.disclaimer ||
+      "이 분석은 질병명의 확정 판단이 아니며 수의사의 진료를 대체하지 않습니다. 이상 증상이 지속되면 동물병원에 방문하세요.",
+  };
+}
+
 function renderAnalysisResult(result) {
   const badge = $("#riskBadge");
   badge.className = `risk-badge ${result.riskLevel}`;
@@ -653,13 +898,260 @@ function renderAnalysisResult(result) {
 
   $("#analysisOutput").innerHTML = `
     <h4>${escapeHtml(result.summary)}</h4>
+    <div class="dog-message">
+      <strong>강아지 입장에서 예상되는 말</strong>
+      <p>${escapeHtml(result.dogMessage)}</p>
+    </div>
+    <div class="model-panel">
+      <p><strong>AI 1차 모델링</strong></p>
+      <div class="metric-grid">
+        <span>샘플 유사도 <strong>${escapeHtml(result.modelMetrics?.sampleSimilarity || "-")}</strong></span>
+        <span>보행 신호 점수 <strong>${escapeHtml(result.modelMetrics?.gaitSignalScore ?? "-")}/100</strong></span>
+        <span>키포인트 커버리지 <strong>${escapeHtml(result.modelMetrics?.keypointCoverage || "-")}</strong></span>
+      </div>
+      <p class="hint">${escapeHtml(result.modelSummary || "")}</p>
+      <p class="hint">${escapeHtml(result.modelMetrics?.limitation || "")}</p>
+    </div>
     <p><strong>수의사 상담 권장:</strong> ${result.vetConsultationRecommended ? "예" : "현재는 관찰 우선"}</p>
     <p><strong>관찰된 신호</strong></p>
     <ul>${result.observedSignals.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    <p><strong>모델이 본 주요 특징</strong></p>
+    <ul>${(result.modelMetrics?.primaryFeatures || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     <p><strong>권장 행동</strong></p>
     <ul>${result.recommendations.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     <p class="hint">${escapeHtml(result.disclaimer)}</p>
   `;
+}
+
+async function callAiWorker(path, payload) {
+  const endpoint = getAiEndpoint();
+  if (!endpoint) {
+    throw new Error(AI_ENDPOINT_HINT);
+  }
+
+  const response = await fetch(`${endpoint}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || data.message || `AI Worker 요청 실패 (${response.status})`);
+  }
+
+  return data;
+}
+
+function waitForVideoEvent(video, eventName) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      video.removeEventListener(eventName, onEvent);
+      video.removeEventListener("error", onError);
+    };
+    const onEvent = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error("영상을 읽는 중 오류가 발생했습니다."));
+    };
+    video.addEventListener(eventName, onEvent, { once: true });
+    video.addEventListener("error", onError, { once: true });
+  });
+}
+
+async function captureVideoFrames(frameCount = 6) {
+  if (selectedVideoMode === "youtube") {
+    throw new Error("YouTube/Shorts 링크는 브라우저에서 프레임 추출이 불가능합니다. 직접 촬영한 파일이나 MP4/WebM 원본 URL을 사용하세요.");
+  }
+
+  const video = $("#videoPreview video");
+  if (!video) throw new Error("분석할 영상 미리보기를 찾을 수 없습니다.");
+
+  if (!Number.isFinite(video.duration) || video.duration === 0) {
+    await waitForVideoEvent(video, "loadedmetadata");
+  }
+
+  const duration = Math.max(video.duration || 1, 1);
+  const canvas = document.createElement("canvas");
+  const maxWidth = 640;
+  const scale = Math.min(1, maxWidth / (video.videoWidth || maxWidth));
+  canvas.width = Math.max(1, Math.round((video.videoWidth || maxWidth) * scale));
+  canvas.height = Math.max(1, Math.round((video.videoHeight || 360) * scale));
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  const frames = [];
+
+  for (let index = 0; index < frameCount; index += 1) {
+    const ratio = frameCount === 1 ? 0.5 : (index + 0.5) / frameCount;
+    video.currentTime = Math.min(duration - 0.05, Math.max(0, duration * ratio));
+    await waitForVideoEvent(video, "seeked");
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    try {
+      frames.push(canvas.toDataURL("image/jpeg", 0.78));
+    } catch {
+      throw new Error("원본 URL 영상은 CORS 제한 때문에 프레임을 추출할 수 없습니다. 파일 업로드를 사용하세요.");
+    }
+  }
+
+  return frames;
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("파일을 읽을 수 없습니다."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("이미지를 읽을 수 없습니다."));
+    image.src = dataUrl;
+  });
+}
+
+function imageToJpegDataUrl(image, maxSize = 1400) {
+  const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.84);
+}
+
+async function resizeImageFile(file, maxSize = 1400) {
+  const dataUrl = await readFileAsDataUrl(file);
+  const image = await loadImage(dataUrl);
+  return imageToJpegDataUrl(image, maxSize);
+}
+
+async function loadSameOriginImageUrl(url) {
+  const image = await loadImage(url);
+  selectedNutritionImage = { name: url.split("/").pop() || "nutrition-label" };
+  selectedNutritionImageDataUrl = imageToJpegDataUrl(image);
+  showNutritionPreview(selectedNutritionImageDataUrl);
+}
+
+async function loadNutritionImageFromUrl(url) {
+  let parsed;
+  try {
+    parsed = new URL(url, window.location.href);
+  } catch {
+    throw new Error("올바른 이미지 URL을 입력하세요.");
+  }
+
+  if (!["http:", "https:", "file:"].includes(parsed.protocol)) {
+    throw new Error("http 또는 https 이미지 URL만 사용할 수 있습니다.");
+  }
+
+  if (parsed.protocol === "file:" || parsed.origin === window.location.origin) {
+    await loadSameOriginImageUrl(parsed.href);
+    return;
+  }
+
+  const response = await fetch(parsed.href, { mode: "cors" });
+  if (!response.ok) throw new Error(`이미지를 내려받을 수 없습니다. (${response.status})`);
+  const blob = await response.blob();
+  if (!blob.type.startsWith("image/")) throw new Error("이미지 파일 URL이 아닙니다.");
+
+  const extension = blob.type.split("/")[1] || "jpg";
+  const file = new File([blob], `nutrition-label.${extension}`, { type: blob.type });
+  selectedNutritionImage = file;
+  selectedNutritionImageDataUrl = await resizeImageFile(file);
+  showNutritionPreview(selectedNutritionImageDataUrl);
+}
+
+async function testAiEndpoint() {
+  const endpoint = getAiEndpoint();
+  if (!endpoint) {
+    $("#aiEndpointStatus").textContent = AI_ENDPOINT_HINT;
+    return;
+  }
+
+  $("#aiEndpointStatus").textContent = "AI Worker 상태를 확인하는 중입니다...";
+  try {
+    const response = await fetch(`${endpoint}/health`, { method: "GET" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || `연결 실패 (${response.status})`);
+    }
+    $("#aiEndpointStatus").textContent = `AI Worker 연결 성공 · 모델 ${data.model || "configured"}`;
+  } catch (error) {
+    $("#aiEndpointStatus").textContent = `AI Worker 연결 실패: ${error.message}`;
+  }
+}
+
+async function runRealVideoAnalysis() {
+  if (!state.dog) {
+    alert("먼저 반려견 프로필을 저장하세요.");
+    switchView("profile");
+    return;
+  }
+
+  if (!selectedVideo) {
+    alert("분석할 영상을 선택하세요.");
+    return;
+  }
+
+  if (!getAiEndpoint()) {
+    $("#analysisOutput").innerHTML = `<p class="error-text">${escapeHtml(AI_ENDPOINT_HINT)}</p>`;
+    switchView("settings");
+    return;
+  }
+
+  if (!hasAnalysisAccess(10)) {
+    alert("AI 분석에 사용할 쿠폰 또는 크레딧이 부족합니다.");
+    switchView("settings");
+    return;
+  }
+
+  const context = {
+    symptoms: collectSymptoms("symptom"),
+    ownerNote: $("#ownerNote").value.trim(),
+    videoType: $("#videoType").value,
+  };
+
+  $("#riskBadge").className = "risk-badge idle";
+  $("#riskBadge").textContent = "LLM 분석 중";
+  $("#analysisOutput").innerHTML = "<p>영상 프레임을 추출해 LLM Worker로 보내는 중입니다...</p>";
+
+  try {
+    const frames = await captureVideoFrames(6);
+    $("#analysisOutput").innerHTML = `<p>${frames.length}개 프레임, 프로필, 보호자 메모를 LLM이 함께 분석하는 중입니다...</p>`;
+    const raw = await callAiWorker("/analyze/gait", {
+      dog: state.dog,
+      recentHealthLogs: state.healthLogs.slice(0, 5),
+      symptoms: context.symptoms,
+      ownerNote: context.ownerNote,
+      videoType: context.videoType,
+      videoMeta: {
+        source: selectedVideoMode || "file",
+        name: selectedVideo?.name || "uploaded-video",
+        duration: selectedVideoMeta?.duration || null,
+      },
+      sampleDatasetProfile: SAMPLE_DATASET_PROFILE,
+      frames,
+    });
+    const result = normalizeAiAnalysis(raw, { ...context, frames });
+    consumeAnalysisAccess(10);
+    state.analyses = [result, ...state.analyses].slice(0, 20);
+    saveState();
+    renderAnalysisResult(result);
+  } catch (error) {
+    $("#riskBadge").className = "risk-badge idle";
+    $("#riskBadge").textContent = "연결 필요";
+    $("#analysisOutput").innerHTML = `
+      <p class="error-text">${escapeHtml(error.message)}</p>
+      <p class="hint">실제 LLM 분석은 AI Worker가 정상 배포되고, Worker에 OpenAI API 키가 설정되어야 실행됩니다.</p>
+    `;
+  }
 }
 
 function showVideoPreview(file) {
@@ -777,6 +1269,104 @@ function searchFood() {
   `;
 }
 
+function showNutritionPreview(dataUrl) {
+  $("#nutritionPreview").innerHTML = `<img src="${escapeHtml(dataUrl)}" alt="성분표 미리보기" />`;
+}
+
+function normalizeNutritionResult(raw) {
+  const riskLevel = normalizeRiskLevel(raw.riskLevel || raw.risk_level || raw.risk);
+  return {
+    riskLevel,
+    summary: String(raw.summary || `성분표 기준 ${riskLabels[riskLevel]} 수준의 영양 위험 신호가 있습니다.`),
+    nutritionSignals: normalizeList(raw.nutritionSignals || raw.nutrition_signals, ["성분표 판독 결과가 비어 있습니다."]),
+    ingredientsOfConcern: normalizeList(raw.ingredientsOfConcern || raw.ingredients_of_concern, []),
+    guaranteedAnalysis: normalizeList(raw.guaranteedAnalysis || raw.guaranteed_analysis, []),
+    allergyNotes: normalizeList(raw.allergyNotes || raw.allergy_notes, []),
+    recommendations: normalizeList(raw.recommendations || raw.recommendedActions || raw.recommended_actions, [
+      "처음 급여할 때는 소량으로 시작하고 구토/설사/가려움 반응을 관찰하세요.",
+    ]),
+    dogMessage: String(raw.dogMessage || raw.dog_message || "내 몸에 맞는지 천천히 확인해줘."),
+    disclaimer:
+      raw.disclaimer ||
+      "성분표 사진 기반의 영양 위험 신호 안내이며 질병 확정 판단이나 처방을 대체하지 않습니다.",
+  };
+}
+
+function renderNutritionResult(result) {
+  $("#nutritionOutput").innerHTML = `
+    <h4>${escapeHtml(riskLabels[result.riskLevel])} · ${escapeHtml(result.summary)}</h4>
+    <div class="dog-message">
+      <strong>강아지 입장에서 예상되는 말</strong>
+      <p>${escapeHtml(result.dogMessage)}</p>
+    </div>
+    <p><strong>영양 위험 신호</strong></p>
+    <ul>${result.nutritionSignals.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    ${
+      result.ingredientsOfConcern.length
+        ? `<p><strong>주의 성분</strong></p><ul>${result.ingredientsOfConcern
+            .map((item) => `<li>${escapeHtml(item)}</li>`)
+            .join("")}</ul>`
+        : ""
+    }
+    ${
+      result.guaranteedAnalysis.length
+        ? `<p><strong>보증성분 해석</strong></p><ul>${result.guaranteedAnalysis
+            .map((item) => `<li>${escapeHtml(item)}</li>`)
+            .join("")}</ul>`
+        : ""
+    }
+    ${
+      result.allergyNotes.length
+        ? `<p><strong>개별 알레르기/질환 메모</strong></p><ul>${result.allergyNotes
+            .map((item) => `<li>${escapeHtml(item)}</li>`)
+            .join("")}</ul>`
+        : ""
+    }
+    <p><strong>권장 행동</strong></p>
+    <ul>${result.recommendations.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    <p class="hint">${escapeHtml(result.disclaimer)}</p>
+  `;
+}
+
+async function runNutritionAnalysis() {
+  if (!selectedNutritionImageDataUrl) {
+    $("#nutritionOutput").innerHTML = '<p class="error-text">먼저 사료 또는 간식 성분표 사진을 선택하세요.</p>';
+    return;
+  }
+
+  if (!getAiEndpoint()) {
+    $("#nutritionOutput").innerHTML = `<p class="error-text">${escapeHtml(AI_ENDPOINT_HINT)}</p>`;
+    switchView("settings");
+    return;
+  }
+
+  if (!hasAnalysisAccess(10)) {
+    alert("AI 분석에 사용할 쿠폰 또는 크레딧이 부족합니다.");
+    switchView("settings");
+    return;
+  }
+
+  $("#nutritionOutput").innerHTML = "<p>성분표 이미지를 LLM Worker로 보내 영양 위험 신호를 분석하는 중입니다...</p>";
+
+  try {
+    const raw = await callAiWorker("/analyze/nutrition-label", {
+      dog: state.dog,
+      productType: $("#nutritionProductType").value,
+      notes: $("#nutritionNotes").value.trim(),
+      image: selectedNutritionImageDataUrl,
+    });
+    const result = normalizeNutritionResult(raw);
+    consumeAnalysisAccess(10);
+    saveState();
+    renderNutritionResult(result);
+  } catch (error) {
+    $("#nutritionOutput").innerHTML = `
+      <p class="error-text">${escapeHtml(error.message)}</p>
+      <p class="hint">사진 속 원재료/보증성분 표기가 선명한지 확인하고, AI Worker 설정을 점검하세요.</p>
+    `;
+  }
+}
+
 function getCareQuery() {
   const base = $("#careQuery")?.value.trim();
   if (base) return base;
@@ -845,8 +1435,12 @@ function resetLocalData() {
   selectedVideoMeta = null;
   selectedVideoUrl = null;
   selectedVideoMode = null;
+  selectedNutritionImage = null;
+  selectedNutritionImageDataUrl = null;
   $("#videoPreview").innerHTML = "<p>선택한 영상 미리보기가 여기에 표시됩니다.</p>";
   $("#analysisOutput").innerHTML = "<p>영상과 메모를 입력한 뒤 분석을 시작하세요.</p>";
+  $("#nutritionPreview").innerHTML = "<p>선택한 성분표 사진 미리보기가 표시됩니다.</p>";
+  $("#nutritionOutput").innerHTML = "<p>사진을 올리면 단백질/지방/나트륨/첨가물/알레르기 관점에서 위험 신호를 확인합니다.</p>";
   $("#riskBadge").className = "risk-badge idle";
   $("#riskBadge").textContent = "대기";
   renderState();
@@ -968,38 +1562,11 @@ function bindEvents() {
 
   $("#analysisForm").addEventListener("submit", async (event) => {
     event.preventDefault();
+    await runRealVideoAnalysis();
+  });
 
-    if (!state.dog) {
-      alert("먼저 반려견 프로필을 저장하세요.");
-      switchView("profile");
-      return;
-    }
-
-    if (!selectedVideo) {
-      alert("분석할 영상을 선택하세요.");
-      return;
-    }
-
-    if (state.creditsRemaining < 10) {
-      alert("영상 분석에 필요한 크레딧이 부족합니다.");
-      switchView("settings");
-      return;
-    }
-
-    $("#riskBadge").className = "risk-badge idle";
-    $("#riskBadge").textContent = "분석 중";
-    $("#analysisOutput").innerHTML =
-      "<p>영상 프레임, 최근 건강기록, 보호자 메모를 함께 분석하는 중입니다...</p>";
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const result = createAnalysis({
-      symptoms: collectSymptoms("symptom"),
-      ownerNote: $("#ownerNote").value.trim(),
-      videoType: $("#videoType").value,
-    });
-
-    state.creditsRemaining = Math.max(0, state.creditsRemaining - 10);
+  $("#runSampleAnalysis").addEventListener("click", () => {
+    const result = createSampleDatasetReport();
     state.analyses = [result, ...state.analyses].slice(0, 20);
     saveState();
     renderAnalysisResult(result);
@@ -1012,6 +1579,57 @@ function bindEvents() {
       searchFood();
     }
   });
+
+  $("#nutritionImage").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    selectedNutritionImage = file;
+    $("#nutritionPreview").innerHTML = "<p>이미지를 불러오는 중입니다...</p>";
+    try {
+      selectedNutritionImageDataUrl = await resizeImageFile(file);
+      showNutritionPreview(selectedNutritionImageDataUrl);
+    } catch (error) {
+      selectedNutritionImage = null;
+      selectedNutritionImageDataUrl = null;
+      $("#nutritionPreview").innerHTML = `<p class="error-text">${escapeHtml(error.message)}</p>`;
+    }
+  });
+
+  $("#loadNutritionImageUrl").addEventListener("click", async () => {
+    const url = $("#nutritionImageUrl").value.trim();
+    if (!url) {
+      $("#nutritionOutput").innerHTML = '<p class="error-text">성분표 이미지 URL을 입력하세요.</p>';
+      return;
+    }
+
+    $("#nutritionPreview").innerHTML = "<p>웹 이미지 파일을 내려받는 중입니다...</p>";
+    try {
+      await loadNutritionImageFromUrl(url);
+      $("#nutritionOutput").innerHTML = "<p>이미지를 불러왔습니다. AI Worker 연결 후 성분표 위험 신호 분석을 실행하세요.</p>";
+    } catch (error) {
+      selectedNutritionImage = null;
+      selectedNutritionImageDataUrl = null;
+      $("#nutritionPreview").innerHTML = "<p>선택한 성분표 사진 미리보기가 표시됩니다.</p>";
+      $("#nutritionOutput").innerHTML = `
+        <p class="error-text">${escapeHtml(error.message)}</p>
+        <p class="hint">외부 사이트가 CORS를 막으면 브라우저에서 직접 다운로드할 수 없습니다. 샘플 버튼 또는 파일 업로드를 사용하세요.</p>
+      `;
+    }
+  });
+
+  $("#useSampleNutritionImage").addEventListener("click", async () => {
+    $("#nutritionImageUrl").value = new URL(SAMPLE_NUTRITION_LABEL_URL, window.location.href).href;
+    $("#nutritionPreview").innerHTML = "<p>샘플 성분표 이미지를 불러오는 중입니다...</p>";
+    try {
+      await loadNutritionImageFromUrl(SAMPLE_NUTRITION_LABEL_URL);
+      $("#nutritionOutput").innerHTML = "<p>샘플 성분표 이미지를 불러왔습니다. AI Worker 연결 후 분석을 실행하세요.</p>";
+    } catch (error) {
+      $("#nutritionOutput").innerHTML = `<p class="error-text">${escapeHtml(error.message)}</p>`;
+    }
+  });
+
+  $("#analyzeNutritionImage").addEventListener("click", runNutritionAnalysis);
 
   $("#copyReport").addEventListener("click", async () => {
     try {
@@ -1084,6 +1702,82 @@ function bindEvents() {
     state.redeemedCoupons.push(code);
     $("#couponMessage").textContent = "Basic 1개월 무료 크레딧이 적용되었습니다.";
     saveState();
+  });
+
+  $("#sendEmailCode").addEventListener("click", () => {
+    const email = $("#emailInput").value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      $("#timeCouponStatus").textContent = "올바른 이메일 주소를 입력하세요.";
+      return;
+    }
+
+    const code = generateCode();
+    state.emailVerification = {
+      email,
+      code,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    };
+    $("#mailPreview").hidden = false;
+    $("#mailPreview").innerHTML = `
+      <strong>베타 메일 미리보기</strong>
+      <p>${escapeHtml(email)} 주소로 인증코드를 보냈다고 가정합니다.</p>
+      <p class="mail-code">${escapeHtml(code)}</p>
+      <p class="hint">정식 배포에서는 Resend/SendGrid 같은 메일 API를 Worker에 연결합니다.</p>
+    `;
+    saveState();
+    $("#timeCouponStatus").textContent = "인증코드를 확인하고 10분 안에 입력하세요.";
+  });
+
+  $("#verifyEmailCode").addEventListener("click", () => {
+    const verification = state.emailVerification;
+    const code = $("#emailCodeInput").value.trim();
+    if (!verification || new Date(verification.expiresAt).getTime() < Date.now()) {
+      $("#timeCouponStatus").textContent = "인증코드가 없거나 만료되었습니다. 다시 발급하세요.";
+      return;
+    }
+
+    if (verification.code !== code) {
+      $("#timeCouponStatus").textContent = "인증코드가 일치하지 않습니다.";
+      return;
+    }
+
+    state.timeCoupon = {
+      email: verification.email,
+      usesRemaining: 5,
+      issuedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    };
+    state.emailVerification = null;
+    $("#emailCodeInput").value = "";
+    $("#mailPreview").hidden = true;
+    saveState();
+  });
+
+  $("#saveAiEndpoint").addEventListener("click", () => {
+    const value = $("#aiEndpoint").value.trim().replace(/\/+$/, "");
+    if (value) {
+      try {
+        const parsed = new URL(value);
+        if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("bad protocol");
+      } catch {
+        $("#aiEndpointStatus").textContent = "https:// 로 시작하는 올바른 Worker URL을 입력하세요.";
+        return;
+      }
+    }
+
+    state.aiEndpoint = value;
+    saveState();
+  });
+
+  $("#testAiEndpoint").addEventListener("click", testAiEndpoint);
+
+  $("#copyPocUrl").addEventListener("click", async () => {
+    try {
+      await copyToClipboard(POC_APP_URL);
+      $("#aiEndpointStatus").textContent = "POC URL을 복사했습니다.";
+    } catch {
+      $("#aiEndpointStatus").textContent = POC_APP_URL;
+    }
   });
 
   $("#plans").addEventListener("click", (event) => {

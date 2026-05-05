@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600">
+  <rect width="1200" height="1600" fill="#fffdf8"/>
+  <rect x="70" y="70" width="1060" height="1460" rx="28" fill="#ffffff" stroke="#22211e" stroke-width="6"/>
+  <text x="110" y="150" font-family="Arial, sans-serif" font-size="48" font-weight="700" fill="#17433f">POC DOG TREAT LABEL</text>
+  <text x="110" y="210" font-family="Arial, sans-serif" font-size="30" fill="#6f6a61">Sample image for AI nutrition risk-signal testing</text>
+
+  <text x="110" y="310" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#22211e">Ingredients / 원재료</text>
+  <foreignObject x="110" y="335" width="980" height="250">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 32px; line-height: 1.45; color: #22211e;">
+      Chicken meal, brown rice, sweet potato, salmon oil, dried beet pulp, natural flavor,
+      salt, potassium chloride, mixed tocopherols, rosemary extract.
+      Contains chicken and fish. No onion, garlic, grape, raisin, chocolate, caffeine, or xylitol listed.
+    </div>
+  </foreignObject>
+
+  <text x="110" y="650" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#22211e">Guaranteed Analysis / 보증성분</text>
+  <rect x="110" y="690" width="980" height="540" fill="#ffffff" stroke="#ded6c9" stroke-width="4"/>
+  <g font-family="Arial, sans-serif" font-size="32" fill="#22211e">
+    <text x="150" y="760">Crude Protein / 조단백질</text><text x="880" y="760" text-anchor="end">24.0% min</text>
+    <line x1="130" y1="790" x2="1070" y2="790" stroke="#ded6c9" stroke-width="3"/>
+    <text x="150" y="850">Crude Fat / 조지방</text><text x="880" y="850" text-anchor="end">14.0% min</text>
+    <line x1="130" y1="880" x2="1070" y2="880" stroke="#ded6c9" stroke-width="3"/>
+    <text x="150" y="940">Crude Fiber / 조섬유</text><text x="880" y="940" text-anchor="end">4.0% max</text>
+    <line x1="130" y1="970" x2="1070" y2="970" stroke="#ded6c9" stroke-width="3"/>
+    <text x="150" y="1030">Moisture / 수분</text><text x="880" y="1030" text-anchor="end">10.0% max</text>
+    <line x1="130" y1="1060" x2="1070" y2="1060" stroke="#ded6c9" stroke-width="3"/>
+    <text x="150" y="1120">Calcium / 칼슘</text><text x="880" y="1120" text-anchor="end">1.2% min</text>
+    <line x1="130" y1="1150" x2="1070" y2="1150" stroke="#ded6c9" stroke-width="3"/>
+    <text x="150" y="1210">Phosphorus / 인</text><text x="880" y="1210" text-anchor="end">0.9% min</text>
+  </g>
+
+  <text x="110" y="1315" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#22211e">Feeding Note / 급여 메모</text>
+  <foreignObject x="110" y="1340" width="980" height="120">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-family: Arial, sans-serif; font-size: 30px; line-height: 1.4; color: #22211e;">
+      For adult dogs. Introduce gradually over 7 days. Consult a veterinarian if vomiting,
+      diarrhea, itching, or unusual lethargy occurs.
+    </div>
+  </foreignObject>
+</svg>

@@ -374,7 +374,8 @@
                 <textarea id="ownerNote" name="ownerNote" rows="5" placeholder="예: 산책 중 오른쪽 뒷다리를 살짝 들었고 계단 내려갈 때 망설였어요."></textarea>
               </label>
 
-              <button class="primary-action full" type="submit">이상 신호 분석 시작</button>
+              <button class="primary-action full" type="submit">실제 AI 이상 신호 분석 시작</button>
+              <button class="secondary-action full" id="runSampleAnalysis" type="button">샘플 데이터셋 구조 리포트</button>
             </form>
 
             <article class="card result-card" id="resultCard">
@@ -412,6 +413,49 @@
               </div>
             </article>
 
+            <article class="card form">
+              <p class="eyebrow">Nutrition label AI</p>
+              <h3>성분표 사진 분석</h3>
+              <label class="upload-box" for="nutritionImage">
+                <input id="nutritionImage" type="file" accept="image/*" capture="environment" />
+                <span>사료나 간식 성분표를 촬영하세요</span>
+                <small>원재료, 보증성분, 첨가물 표기가 보이게 찍어주세요</small>
+              </label>
+              <div class="url-input-row">
+                <label>
+                  성분표 이미지 URL
+                  <input id="nutritionImageUrl" type="url" placeholder="https://example.com/label.jpg" inputmode="url" autocomplete="off" />
+                </label>
+                <button class="secondary-action" id="useSampleNutritionImage" type="button">샘플</button>
+                <button class="secondary-action" id="loadNutritionImageUrl" type="button">불러오기</button>
+              </div>
+              <a class="secondary-action full link-action" id="downloadSampleNutritionImage" href="./sample-nutrition-label.svg" download>샘플 성분표 이미지 다운로드</a>
+              <div class="nutrition-preview" id="nutritionPreview">
+                <p>선택한 성분표 사진 미리보기가 표시됩니다.</p>
+              </div>
+              <div class="form-grid">
+                <label>
+                  제품 유형
+                  <select id="nutritionProductType">
+                    <option value="dry_food">건식 사료</option>
+                    <option value="wet_food">습식 사료</option>
+                    <option value="treat">간식</option>
+                    <option value="supplement">영양제</option>
+                  </select>
+                </label>
+                <label>
+                  급여 목적
+                  <input id="nutritionNotes" placeholder="예: 관절, 피부, 체중관리, 노령견" autocomplete="off" />
+                </label>
+              </div>
+              <button class="primary-action full" id="analyzeNutritionImage" type="button">성분표 위험 신호 분석</button>
+              <div class="analysis-output" id="nutritionOutput">
+                <p>사진을 올리면 단백질/지방/나트륨/첨가물/알레르기 관점에서 위험 신호를 확인합니다.</p>
+              </div>
+            </article>
+          </div>
+
+          <div class="grid two">
             <article class="card">
               <p class="eyebrow">Rule examples</p>
               <h3>POC 음식 데이터</h3>
@@ -419,6 +463,16 @@
                 <div><strong>위험</strong><span>초콜릿, 포도, 양파, 마늘, 자일리톨</span></div>
                 <div><strong>소량</strong><span>치즈, 우유, 계란, 연어, 사과</span></div>
                 <div><strong>대체로 안전</strong><span>고구마, 닭가슴살, 단호박, 오이</span></div>
+              </div>
+            </article>
+
+            <article class="card">
+              <p class="eyebrow">Nutrition standard</p>
+              <h3>분석 기준</h3>
+              <div class="data-table">
+                <div><strong>성분</strong><span>조단백, 조지방, 조섬유, 조회분, 칼슘/인 비율, 나트륨 표기를 확인합니다.</span></div>
+                <div><strong>주의</strong><span>자일리톨, 양파/마늘류, 포도류, 과도한 염분/당류, 모호한 부산물 표기를 경고합니다.</span></div>
+                <div><strong>개별화</strong><span>나이, 체중, 기존 질환, 알레르기 메모를 함께 넣어 위험 신호를 보정합니다.</span></div>
               </div>
             </article>
           </div>
@@ -586,14 +640,70 @@
               <div class="plans" id="plans"></div>
             </article>
             <article class="card form">
+              <p class="eyebrow">Verified time coupon</p>
+              <h3>메일 인증 쿠폰</h3>
+              <label>
+                이메일 주소
+                <input id="emailInput" type="email" placeholder="tester@example.com" autocomplete="email" />
+              </label>
+              <button class="primary-action full" id="sendEmailCode" type="button">인증코드 받기</button>
+              <div class="mail-preview" id="mailPreview" hidden></div>
+              <label>
+                인증코드
+                <input id="emailCodeInput" inputmode="numeric" maxlength="6" placeholder="6자리 코드" autocomplete="one-time-code" />
+              </label>
+              <button class="secondary-action full" id="verifyEmailCode" type="button">인증하고 5회 쿠폰 받기</button>
+              <p class="hint" id="timeCouponStatus">메일 인증 후 48시간 동안 영상 AI 분석 5회를 사용할 수 있습니다.</p>
+            </article>
+          </div>
+
+          <div class="grid two">
+            <article class="card form">
               <p class="eyebrow">Coupon</p>
-              <h3>쿠폰 등록</h3>
+              <h3>기본 쿠폰 등록</h3>
               <label>
                 쿠폰 코드
                 <input id="couponCode" placeholder="WELCOME3000" autocomplete="off" />
               </label>
               <button class="primary-action full" id="redeemCoupon" type="button">쿠폰 적용</button>
               <p class="hint" id="couponMessage">`WELCOME3000` 입력 시 Basic 1개월 무료 크레딧을 지급합니다.</p>
+            </article>
+            <article class="card">
+              <p class="eyebrow">Usage rule</p>
+              <h3>쿠폰 사용 기준</h3>
+              <div class="data-table">
+                <div><strong>인증 필요</strong><span>메일 인증을 완료해야 시간제 쿠폰이 발급됩니다.</span></div>
+                <div><strong>사용 횟수</strong><span>영상 AI 1차 분석 5회까지 쿠폰으로 차감합니다.</span></div>
+                <div><strong>만료 시간</strong><span>발급 후 48시간이 지나면 남은 횟수는 사용할 수 없습니다.</span></div>
+              </div>
+            </article>
+          </div>
+
+          <div class="grid two">
+            <article class="card form">
+              <p class="eyebrow">AI Worker</p>
+              <h3>실제 AI 서버 연결</h3>
+              <label>
+                Worker URL
+                <input id="aiEndpoint" type="url" placeholder="https://iknow-dog-ai.example.workers.dev" inputmode="url" autocomplete="off" />
+              </label>
+              <button class="primary-action full" id="saveAiEndpoint" type="button">AI Worker 저장</button>
+              <button class="secondary-action full" id="testAiEndpoint" type="button">AI 연결 테스트</button>
+              <p class="hint" id="aiEndpointStatus">실제 영상/성분표 AI 분석은 서버 측 Worker URL이 연결되어야 실행됩니다.</p>
+              <label>
+                POC URL
+                <input id="pocUrl" readonly value="https://lovelyjhk.github.io/iknow-dog-web-poc/" />
+              </label>
+              <button class="secondary-action full" id="copyPocUrl" type="button">POC URL 복사</button>
+            </article>
+            <article class="card">
+              <p class="eyebrow">Production rule</p>
+              <h3>출시 기준</h3>
+              <div class="data-table">
+                <div><strong>키 보안</strong><span>AI API 키는 브라우저가 아니라 Worker 환경변수에만 저장합니다.</span></div>
+                <div><strong>모델 입력</strong><span>영상은 브라우저에서 프레임을 추출해 멀티모달 모델에 전달합니다.</span></div>
+                <div><strong>의료 표현</strong><span>질병 확정 대신 위험 신호, 상담 필요도, 관찰 권장 행동만 안내합니다.</span></div>
+              </div>
             </article>
           </div>
 
