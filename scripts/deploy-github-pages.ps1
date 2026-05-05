@@ -25,9 +25,8 @@ $RepoFullName = "$Owner/$Repo"
 
 Write-Host "Using GitHub CLI: $Gh"
 
-try {
-  & $Gh auth status | Out-Host
-} catch {
+& $Gh auth status | Out-Host
+if ($LASTEXITCODE -ne 0) {
   Write-Host ""
   Write-Host "GitHub login is required before deployment." -ForegroundColor Yellow
   Write-Host "Run this command, finish browser login, then run this script again:"
@@ -55,10 +54,11 @@ if ($dirty) {
   git commit -m "feat: add web poc for dog health analysis"
 }
 
-$repoExists = $true
-try {
-  & $Gh repo view $RepoFullName --json nameWithOwner | Out-Null
-} catch {
+$repoExists = $false
+& $Gh repo view $RepoFullName --json nameWithOwner | Out-Null
+if ($LASTEXITCODE -eq 0) {
+  $repoExists = $true
+} else {
   $repoExists = $false
 }
 
@@ -66,8 +66,8 @@ if (-not $repoExists) {
   $visibility = if ($Private) { "--private" } else { "--public" }
   & $Gh repo create $RepoFullName $visibility --source . --remote origin --push
 } else {
-  $origin = git remote get-url origin 2>$null
-  if ($LASTEXITCODE -ne 0 -or -not $origin) {
+  git remote get-url origin 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) {
     git remote add origin "https://github.com/$RepoFullName.git"
   } else {
     git remote set-url origin "https://github.com/$RepoFullName.git"
